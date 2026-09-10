@@ -30,11 +30,6 @@
                     <a href="{{ route('profile.edit') }}" class="dropdown-item">
                         <i class="fas fa-user-edit mr-2"></i> My Profile
                     </a>
-                    @if (auth()->user()->student)
-                        <a href="{{ route('student.profile.edit') }}" class="dropdown-item">
-                            <i class="fas fa-graduation-cap mr-2"></i> Student Details
-                        </a>
-                    @endif
                     <div class="dropdown-divider"></div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
@@ -76,14 +71,6 @@
                             <p>My Profile</p>
                         </a>
                     </li>
-                    @if (auth()->user()->student)
-                        <li class="nav-item">
-                            <a href="{{ route('student.profile.edit') }}" class="nav-link @if(request()->routeIs('student.profile.*')) active @endif">
-                                <i class="nav-icon fas fa-graduation-cap"></i>
-                                <p>Student Details</p>
-                            </a>
-                        </li>
-                    @endif
                 </ul>
             </nav>
         </div>

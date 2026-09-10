@@ -80,7 +80,6 @@ class StudentAuthController extends Controller
             ]);
 
             Student::create([
-                'user_id' => $user->id,
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'registration_number' => $validated['registration_number'],

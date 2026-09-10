@@ -90,20 +90,6 @@
                 </form>
             </div>
 
-            @if ($user->student)
-                <div class="card card-info">
-                    <div class="card-header">
-                        <h3 class="card-title">Student Profile</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="mb-1"><strong>Registration:</strong> {{ $user->student->registration_number }}</p>
-                        <p class="mb-0"><strong>Institution:</strong> {{ $user->student->institution->name ?? 'Not set' }}</p>
-                    </div>
-                    <div class="card-footer">
-                        <a href="{{ route('student.profile.edit') }}" class="btn btn-info">Edit Student Details</a>
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
 @endsection
