@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Student extends Model
 {
     protected $fillable = [
+        'user_id',
         'first_name',
         'last_name',
         'registration_number',
@@ -19,6 +20,11 @@ class Student extends Model
         'course_id',
         'study_level_id',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function nationality(): BelongsTo
     {
