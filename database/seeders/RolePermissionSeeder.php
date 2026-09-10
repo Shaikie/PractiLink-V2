@@ -25,9 +25,10 @@ class RolePermissionSeeder extends Seeder
         }
 
         $roles = [
-            ['name' => 'Administrator', 'slug' => 'administrator'],
-            ['name' => 'Placement Officer', 'slug' => 'placement-officer'],
-            ['name' => 'Supervisor', 'slug' => 'supervisor'],
+            ['name' => 'Administrator', 'slug' => 'administrator', 'description' => 'Full system access.'],
+            ['name' => 'Placement Officer', 'slug' => 'placement-officer', 'description' => 'Manages student placement activities.'],
+            ['name' => 'Supervisor', 'slug' => 'supervisor', 'description' => 'Supervises student training.'],
+            ['name' => 'Student', 'slug' => 'student', 'description' => 'PractiLink student account.'],
         ];
 
         foreach ($roles as $role) {
