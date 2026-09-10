@@ -15,6 +15,16 @@ class ReferenceDataSeeder extends Seeder
                 ['name' => 'Information Technology', 'code' => 'IT'],
                 ['name' => 'Operations', 'code' => 'OPS'],
             ],
+            'institutions' => [
+                ['name' => 'University of Dar es Salaam', 'code' => 'UDSM'],
+                ['name' => 'Ardhi University', 'code' => 'ARU'],
+                ['name' => 'Nelson Mandela African Institution of Science and Technology', 'code' => 'NM-AIST'],
+            ],
+            'courses' => [
+                ['name' => 'Bachelor of Science in Computer Science', 'code' => 'BSC-CS'],
+                ['name' => 'Bachelor of Science in Information Technology', 'code' => 'BSC-IT'],
+                ['name' => 'Bachelor of Science in Computer Engineering', 'code' => 'BSC-CE'],
+            ],
             'nationalities' => [
                 ['name' => 'Tanzanian', 'code' => 'TZA'],
                 ['name' => 'Kenyan', 'code' => 'KEN'],
@@ -53,11 +63,13 @@ class ReferenceDataSeeder extends Seeder
 
         foreach ($tables as $table => $rows) {
             foreach ($rows as $row) {
-                $unique = ['code' => $row['code']];
-                DB::table($table)->updateOrInsert($unique, array_merge($row, [
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]));
+                DB::table($table)->updateOrInsert(
+                    ['code' => $row['code']],
+                    array_merge($row, [
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ])
+                );
             }
         }
     }
