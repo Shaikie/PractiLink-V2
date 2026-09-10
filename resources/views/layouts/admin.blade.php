@@ -27,6 +27,15 @@
                     {{ auth()->user()->fullname }}
                 </a>
                 <div class="dropdown-menu dropdown-menu-right">
+                    <a href="{{ route('profile.edit') }}" class="dropdown-item">
+                        <i class="fas fa-user-edit mr-2"></i> My Profile
+                    </a>
+                    @if (auth()->user()->student)
+                        <a href="{{ route('student.profile.edit') }}" class="dropdown-item">
+                            <i class="fas fa-graduation-cap mr-2"></i> Student Details
+                        </a>
+                    @endif
+                    <div class="dropdown-divider"></div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit" class="dropdown-item">
@@ -49,18 +58,32 @@
                     <i class="fas fa-user-circle fa-2x text-white"></i>
                 </div>
                 <div class="info">
-                    <a href="#" class="d-block">{{ auth()->user()->fullname }}</a>
+                    <a href="{{ route('profile.edit') }}" class="d-block">{{ auth()->user()->fullname }}</a>
                 </div>
             </div>
 
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column" role="menu">
                     <li class="nav-item">
-                        <a href="{{ route('dashboard') }}" class="nav-link active">
+                        <a href="{{ route('dashboard') }}" class="nav-link @if(request()->routeIs('dashboard')) active @endif">
                             <i class="nav-icon fas fa-tachometer-alt"></i>
                             <p>Dashboard</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="{{ route('profile.edit') }}" class="nav-link @if(request()->routeIs('profile.*')) active @endif">
+                            <i class="nav-icon fas fa-user"></i>
+                            <p>My Profile</p>
+                        </a>
+                    </li>
+                    @if (auth()->user()->student)
+                        <li class="nav-item">
+                            <a href="{{ route('student.profile.edit') }}" class="nav-link @if(request()->routeIs('student.profile.*')) active @endif">
+                                <i class="nav-icon fas fa-graduation-cap"></i>
+                                <p>Student Details</p>
+                            </a>
+                        </li>
+                    @endif
                 </ul>
             </nav>
         </div>
