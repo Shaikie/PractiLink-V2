@@ -17,14 +17,13 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    public function roles(): BelongsToMany
-    {
-        return $this->belongsToMany(Role::class, 'user_roles');
-    }
+    public function roles(): BelongsToMany { return $this->belongsToMany(Role::class, 'user_roles'); }
+    public function permissions(): BelongsToMany { return $this->belongsToMany(Permission::class, 'permission_user'); }
 
-    public function permissions(): BelongsToMany
+    public function hasPermission(string $permission): bool
     {
-        return $this->belongsToMany(Permission::class, 'permission_user');
+        return $this->permissions()->where('slug', $permission)->exists()
+            || $this->roles()->whereHas('permissions', fn ($query) => $query->where('slug', $permission))->exists();
     }
 
     protected function casts(): array

@@ -2,12 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
-use App\Models\Institution;
-use App\Models\Nationality;
-use App\Models\Student;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -15,13 +10,13 @@ class ProfileController extends Controller
     public function edit(Request $request)
     {
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $request->user('web'),
         ]);
     }
 
     public function update(Request $request)
     {
-        $user = $request->user();
+        $user = $request->user('web');
 
         $validated = $request->validate([
             'fullname' => ['required', 'string', 'max:255'],
@@ -30,10 +25,7 @@ class ProfileController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
         ]);
 
-        DB::transaction(function () use ($user, $validated) {
-            $user->update($validated);
-
-        });
+        $user->update($validated);
 
         return back()->with('success', 'Profile details updated successfully.');
     }
@@ -41,24 +33,14 @@ class ProfileController extends Controller
     public function updatePassword(Request $request)
     {
         $validated = $request->validate([
-            'current_password' => ['required', 'current_password'],
+            'current_password' => ['required', 'current_password:web'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $request->user()->update([
+        $request->user('web')->update([
             'password' => $validated['password'],
         ]);
 
         return back()->with('success', 'Password changed successfully.');
-    }
-
-    public function editStudent(Request $request)
-    {
-        abort(404);
-    }
-
-    public function updateStudent(Request $request)
-    {
-        abort(404);
     }
 }
