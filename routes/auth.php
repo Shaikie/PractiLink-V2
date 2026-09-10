@@ -1,16 +1,16 @@
 <?php
 
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\StudentAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/login', [StudentAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [StudentAuthController::class, 'login']);
 
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
+    Route::get('/register', [StudentAuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [StudentAuthController::class, 'register']);
 });
 
-Route::post('/logout', [AuthController::class, 'logout'])
+Route::post('/logout', [StudentAuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
