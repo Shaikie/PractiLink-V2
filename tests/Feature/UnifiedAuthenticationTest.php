@@ -6,6 +6,7 @@ use App\Models\Student;
 use App\Models\User;
 use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -58,7 +59,10 @@ class UnifiedAuthenticationTest extends TestCase
         $response = $this->post(route('register'), [
             'first_name' => 'Test', 'last_name' => 'Student', 'registration_number' => 'REG-TEST-001',
             'email' => 'new.student@example.test', 'phone' => '0712345678', 'gender' => 'other',
-            'nationality_id' => 1, 'institution_id' => 1, 'course_id' => 1, 'study_level_id' => 1,
+            'nationality_id' => DB::table('nationalities')->where('code', 'TZA')->value('id'),
+            'institution_id' => DB::table('institutions')->where('code', 'UDSM')->value('id'),
+            'course_id' => DB::table('courses')->where('code', 'BSC-CS')->value('id'),
+            'study_level_id' => DB::table('study_levels')->where('code', 'DEG')->value('id'),
             'password' => 'password123', 'password_confirmation' => 'password123',
         ]);
         $response->assertRedirect(route('login'));
