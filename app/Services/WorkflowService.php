@@ -6,7 +6,6 @@ use App\Models\Application;
 use App\Models\ApplicationWorkflow;
 use App\Models\ApplicationWorkflowHistory;
 use App\Models\WorkflowDefinition;
-use App\Models\WorkflowStage;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
 use App\Models\User;
@@ -46,7 +45,6 @@ class WorkflowService
             $transition = WorkflowTransition::where('workflow_version_id',$workflow->workflow_version_id)->where('from_stage_id',$workflow->current_stage_id)->where('action',strtoupper($action))->first();
             if (!$transition) throw ValidationException::withMessages(['transition'=>'This action is not configured for the current workflow stage.']);
             if ($transition->requires_comment && blank($comment)) throw ValidationException::withMessages(['comment'=>'A comment is required for this workflow action.']);
-            if ($workflow->currentStage?->required_permission && (!$actor || !$actor->hasPermission($workflow->currentStage->required_permission))) abort(403,'You do not have permission to act on this workflow stage.');
             if ($transition->required_permission && (!$actor || !$actor->hasPermission($transition->required_permission))) abort(403,'You do not have permission to perform this workflow action.');
 
             $from = $workflow->current_stage_id;
