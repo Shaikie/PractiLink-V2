@@ -7,7 +7,6 @@ use App\Notifications\ApplicationStatusUpdated;
 use App\Services\WorkflowService;
 use App\Support\AuditLogger;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AdminApplicationController extends Controller
 {
@@ -16,8 +15,7 @@ class AdminApplicationController extends Controller
 
     public function forward(Request $request, Application $application, WorkflowService $workflows)
     {
-        $workflow=$application->workflow ?? $workflows->startFor($application);
-        $old=$application->only(['status','reviewed_at']);
+        $workflow=$application->workflow ?? $workflows->startFor($application); $old=$application->only(['status','reviewed_at']);
         $result=$workflows->transition($workflow,'FORWARD',$request->user(),$request->input('comment'));
         $status=$result->currentStage?->is_terminal ? 'ACCEPTED' : 'UNDER_REVIEW';
         $application->update(['status'=>$status,'reviewed_at'=>$status==='ACCEPTED'?now():null]);
@@ -26,11 +24,10 @@ class AdminApplicationController extends Controller
         return back()->with('success','Application forwarded to the next workflow stage.');
     }
 
-    public function return(Request $request, Application $application, WorkflowService $workflows)
+    public function returnApplication(Request $request, Application $application, WorkflowService $workflows)
     {
-        $request->validate(['comment'=>['required','string','max:5000']]);
-        $workflow=$application->workflow ?? $workflows->startFor($application);
-        $result=$workflows->transition($workflow,'RETURN',$request->user(),$request->input('comment'));
+        $request->validate(['comment'=>['required','string','max:5000']]); $workflow=$application->workflow ?? $workflows->startFor($application);
+        $workflows->transition($workflow,'RETURN',$request->user(),$request->input('comment'));
         $application->update(['status'=>'RETURNED','reviewed_at'=>null,'notes'=>$request->input('comment')]);
         AuditLogger::record('application.workflow_returned',$application,null,$application->only(['status','notes']));
         $application->student->notify(new ApplicationStatusUpdated($application->fresh()));
@@ -39,8 +36,7 @@ class AdminApplicationController extends Controller
 
     public function reject(Request $request, Application $application)
     {
-        $data=$request->validate(['comment'=>['required','string','max:5000']]);
-        $old=$application->only(['status','reviewed_at','notes']);
+        $data=$request->validate(['comment'=>['required','string','max:5000']]); $old=$application->only(['status','reviewed_at','notes']);
         $application->update(['status'=>'REJECTED','reviewed_at'=>now(),'notes'=>$data['comment']]);
         AuditLogger::record('application.rejected',$application,$old,$application->fresh()->only(['status','reviewed_at','notes']));
         $application->student->notify(new ApplicationStatusUpdated($application->fresh()));
@@ -51,7 +47,7 @@ class AdminApplicationController extends Controller
     {
         return match($request->input('status')) {
             'UNDER_REVIEW' => $this->forward($request,$application,app(WorkflowService::class)),
-            'RETURNED' => $this->return($request,$application,app(WorkflowService::class)),
+            'RETURNED' => $this->returnApplication($request,$application,app(WorkflowService::class)),
             'REJECTED' => $this->reject($request,$application),
             default => back()->withErrors(['status'=>'Use the workflow actions to change application status.']),
         };
