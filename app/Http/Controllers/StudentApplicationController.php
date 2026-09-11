@@ -20,6 +20,12 @@ class StudentApplicationController extends Controller
         $student = Auth::guard('students')->user();
         return view('student.applications.index', [
             'applications' => $student->applications()->with(['applicationWindow.trainingType', 'documents.documentType', 'workflow.currentStage'])->latest()->get(),
+        ]);
+    }
+
+    public function create()
+    {
+        return view('student.applications.create', [
             'windows' => ApplicationWindow::with('trainingType')->where('is_active', true)->where('opens_at', '<=', now())->where('closes_at', '>=', now())->orderBy('closes_at')->get(),
         ]);
     }
