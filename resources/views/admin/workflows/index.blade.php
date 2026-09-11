@@ -1,8 +1,17 @@
 @extends('layouts.admin')
 @section('title','Workflows')
-@section('page_title','Workflow Configuration')
-@section('page_description','Manage approval workflows and immutable versions.')
+@section('page_title','Workflows')
+@section('page_description','Manage approval workflows and their versioned configurations.')
+@section('page_actions')<a href="{{ route('admin.workflows.create') }}" class="btn btn-primary clay-btn-primary"><i class="fas fa-plus mr-1"></i>Create New Workflow</a>@endsection
 @section('content')
-<div class="row"><div class="col-lg-5"><div class="card"><div class="card-header"><h3 class="card-title">Create workflow</h3></div><form method="POST" action="{{ route('admin.workflows.store') }}">@csrf<div class="card-body"><div class="form-group"><label>Name</label><input name="name" class="form-control" required></div><div class="form-group"><label>Code</label><input name="code" class="form-control" pattern="[A-Za-z0-9_-]+" required></div><div class="form-group"><label>Training type</label><select name="training_type_id" class="form-control"><option value="">All training types</option>@foreach($trainingTypes as $type)<option value="{{ $type->id }}">{{ $type->name }}</option>@endforeach</select></div><div class="form-group mb-0"><label>Description</label><textarea name="description" rows="3" class="form-control"></textarea></div></div><div class="card-footer"><button class="btn btn-primary">Create workflow</button></div></form></div></div>
-<div class="col-lg-7"><div class="card"><div class="card-header"><h3 class="card-title">Configured workflows</h3></div><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>Workflow</th><th>Training</th><th>Versions</th><th></th></tr></thead><tbody>@forelse($workflows as $workflow)<tr><td><strong>{{ $workflow->name }}</strong><div class="small text-muted">{{ $workflow->code }}</div></td><td>{{ $workflow->trainingType?->name ?? 'All' }}</td><td>{{ $workflow->versions->count() }}</td><td class="text-right"><a class="btn btn-sm btn-outline-primary" href="{{ route('admin.workflows.show',$workflow) }}">Manage</a></td></tr>@empty<tr><td colspan="4" class="text-center text-muted py-4">No workflows configured.</td></tr>@endforelse</tbody></table></div></div></div></div></div>
+@if($workflows->isEmpty())
+    <div class="clay-card clay-empty-state"><div class="clay-empty-icon"><i class="fas fa-project-diagram"></i></div><h3>No workflows yet</h3><p>Create the first workflow to define how applications move through review.</p><a href="{{ route('admin.workflows.create') }}" class="btn btn-primary clay-btn-primary">Create New Workflow</a></div>
+@else
+<div class="clay-card"><div class="clay-table-wrap"><table class="table clay-table mb-0"><thead><tr><th>Workflow</th><th>Training type</th><th>Published</th><th>Draft</th><th>Updated</th><th class="text-right">Action</th></tr></thead><tbody>
+@foreach($workflows as $workflow)
+@php $published=$workflow->versions->where('status','PUBLISHED')->sortByDesc('version')->first(); $draft=$workflow->versions->where('status','DRAFT')->sortByDesc('version')->first(); @endphp
+<tr><td><div class="font-weight-bold">{{ $workflow->name }}</div><div class="clay-muted small">{{ $workflow->code }}</div></td><td>{{ $workflow->trainingType?->name ?? 'All training types' }}</td><td>@if($published)<span class="badge badge-success clay-badge">v{{ $published->version }} · Published</span>@else<span class="clay-muted">—</span>@endif</td><td>@if($draft)<span class="badge badge-warning clay-badge">v{{ $draft->version }} · Draft</span>@else<span class="clay-muted">—</span>@endif</td><td>{{ $workflow->updated_at?->format('d M Y') }}</td><td class="text-right"><a href="{{ route('admin.workflows.show',$workflow) }}" class="btn btn-sm btn-outline-primary clay-btn-outline"><i class="fas fa-sliders-h mr-1"></i>Manage</a></td></tr>
+@endforeach
+</tbody></table></div></div>
+@endif
 @endsection
