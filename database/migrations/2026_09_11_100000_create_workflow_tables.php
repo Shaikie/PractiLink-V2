@@ -79,7 +79,10 @@ return new class extends Migration
             $table->text('comment')->nullable();
             $table->timestamp('acted_at');
             $table->timestamps();
-            $table->index(['application_workflow_id', 'acted_at']);
+            $table->index(
+                ['application_workflow_id', 'acted_at'],
+                'application_workflow_history_workflow_acted_idx'
+            );
         });
     }
 
