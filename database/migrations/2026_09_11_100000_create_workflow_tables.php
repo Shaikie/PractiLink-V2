@@ -54,7 +54,10 @@ return new class extends Migration
             $table->string('required_permission')->nullable();
             $table->boolean('requires_comment')->default(false);
             $table->timestamps();
-            $table->unique(['workflow_version_id', 'from_stage_id', 'to_stage_id', 'action']);
+            $table->unique(
+                ['workflow_version_id', 'from_stage_id', 'to_stage_id', 'action'],
+                'workflow_transition_route_unique'
+            );
         });
 
         Schema::create('application_workflows', function (Blueprint $table) {
