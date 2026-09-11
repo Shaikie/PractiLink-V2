@@ -16,6 +16,7 @@ Route::middleware('permission:applications.view')->group(function(){
     Route::get('applications/{application}',[AdminApplicationController::class,'show'])->name('applications.show');
     Route::get('applications/{application}/documents/{document}/preview',[StudentApplicationDocumentController::class,'preview'])->name('applications.documents.preview');
     Route::get('applications/{application}/documents/{document}/download',[StudentApplicationDocumentController::class,'download'])->name('applications.documents.download');
+    Route::post('applications/{application}/action',[AdminApplicationController::class,'action'])->name('applications.action');
 });
 Route::middleware('permission:applications.forward')->post('applications/{application}/forward',[AdminApplicationController::class,'forward'])->name('applications.forward');
 Route::middleware('permission:applications.return')->post('applications/{application}/return',[AdminApplicationController::class,'returnApplication'])->name('applications.return');
