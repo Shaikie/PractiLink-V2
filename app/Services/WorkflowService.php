@@ -34,6 +34,7 @@ class WorkflowService
     public function transition(ApplicationWorkflow $workflow, string $action, ?User $actor, ?string $comment=null): ApplicationWorkflow
     {
         return DB::transaction(function () use ($workflow,$action,$actor,$comment) {
+            $workflow = ApplicationWorkflow::query()->whereKey($workflow->id)->lockForUpdate()->firstOrFail();
             $workflow->load('currentStage','version');
             $transition=WorkflowTransition::where('workflow_version_id',$workflow->workflow_version_id)->where('from_stage_id',$workflow->current_stage_id)->where('action',strtoupper($action))->first();
             if (!$transition) throw ValidationException::withMessages(['transition'=>'This action is not configured for the current workflow stage.']);

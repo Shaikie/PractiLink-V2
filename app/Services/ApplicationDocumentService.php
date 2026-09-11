@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use ZipArchive;
 
 class ApplicationDocumentService
 {
@@ -28,7 +29,23 @@ class ApplicationDocumentService
     private function verifySignature(UploadedFile $file,string $extension): void
     {
         $handle=fopen($file->getRealPath(),'rb'); $signature=$handle?fread($handle,16):false; if(is_resource($handle))fclose($handle);
-        $valid=match($extension){'pdf'=>is_string($signature)&&str_starts_with($signature,'%PDF-'),'jpg','jpeg'=>is_string($signature)&&str_starts_with($signature,"\xFF\xD8\xFF"),'png'=>is_string($signature)&&str_starts_with($signature,"\x89PNG\x0D\x0A\x1A\x0A"),default=>true};
+        $valid=match($extension){
+            'pdf'=>is_string($signature)&&str_starts_with($signature,'%PDF-'),
+            'jpg','jpeg'=>is_string($signature)&&str_starts_with($signature,"\xFF\xD8\xFF"),
+            'png'=>is_string($signature)&&str_starts_with($signature,"\x89PNG\x0D\x0A\x1A\x0A"),
+            'docx'=>$this->isValidDocx($file),
+            default=>false,
+        };
         if(!$valid)throw ValidationException::withMessages(['document'=>'The file content does not match its declared format.']);
+    }
+
+    private function isValidDocx(UploadedFile $file): bool
+    {
+        if (!class_exists(ZipArchive::class)) return false;
+        $archive = new ZipArchive();
+        $opened = $archive->open($file->getRealPath()) === true;
+        $valid = $opened && $archive->locateName('[Content_Types].xml') !== false && $archive->locateName('word/document.xml') !== false;
+        if ($opened) $archive->close();
+        return $valid;
     }
 }
