@@ -23,7 +23,15 @@ Route::middleware('permission:applications.return')->post('applications/{applica
 Route::middleware('permission:applications.reject')->post('applications/{application}/reject',[AdminApplicationController::class,'reject'])->name('applications.reject');
 Route::middleware('permission:applications.accept')->post('applications/{application}/accept',[AdminApplicationController::class,'accept'])->name('applications.accept');
 
-Route::middleware('permission:workflows.manage')->prefix('workflows')->name('workflows.')->group(function(){Route::get('/',[AdminWorkflowController::class,'index'])->name('index');Route::post('/',[AdminWorkflowController::class,'store'])->name('store');Route::get('/{workflow}',[AdminWorkflowController::class,'show'])->name('show');Route::post('/{workflow}/versions',[AdminWorkflowController::class,'createVersion'])->name('versions.store');Route::put('/versions/{version}',[AdminWorkflowController::class,'updateVersion'])->name('versions.update');Route::post('/versions/{version}/publish',[AdminWorkflowController::class,'publish'])->name('versions.publish');});
+Route::middleware('permission:workflows.manage')->prefix('workflows')->name('workflows.')->group(function(){
+    Route::get('/',[AdminWorkflowController::class,'index'])->name('index');
+    Route::get('/create',[AdminWorkflowController::class,'create'])->name('create');
+    Route::post('/',[AdminWorkflowController::class,'store'])->name('store');
+    Route::get('/{workflow}',[AdminWorkflowController::class,'show'])->name('show');
+    Route::post('/{workflow}/versions',[AdminWorkflowController::class,'createVersion'])->name('versions.store');
+    Route::put('/versions/{version}',[AdminWorkflowController::class,'updateVersion'])->name('versions.update');
+    Route::post('/versions/{version}/publish',[AdminWorkflowController::class,'publish'])->name('versions.publish');
+});
 
 Route::middleware('permission:users.manage')->prefix('staff')->name('staff.')->group(function(){Route::get('/',[AdminStaffController::class,'index'])->name('index');Route::get('/create',[AdminStaffController::class,'create'])->name('create');Route::post('/',[AdminStaffController::class,'store'])->name('store');Route::get('/roles',[AdminRoleController::class,'index'])->name('roles.index');Route::post('/roles',[AdminRoleController::class,'store'])->name('roles.store');Route::put('/roles/{role}',[AdminRoleController::class,'update'])->name('roles.update');Route::get('/{staff}/edit',[AdminStaffController::class,'edit'])->name('edit');Route::put('/{staff}',[AdminStaffController::class,'update'])->name('update');});
 
