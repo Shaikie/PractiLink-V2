@@ -13,6 +13,7 @@ Route::prefix('student/applications')->name('student.applications.')->group(func
     Route::get('/', [StudentApplicationController::class,'index'])->name('index');
     Route::post('/', [StudentApplicationController::class,'store'])->name('store');
     Route::get('/{application}', [StudentApplicationController::class,'show'])->name('show');
+    Route::put('/{application}', [StudentApplicationController::class,'update'])->name('update');
     Route::post('/{application}/submit', [StudentApplicationController::class,'submit'])->name('submit');
     Route::post('/{application}/cancel', [StudentApplicationController::class,'cancel'])->name('cancel');
     Route::post('/{application}/documents', [StudentApplicationDocumentController::class,'store'])->name('documents.store');
