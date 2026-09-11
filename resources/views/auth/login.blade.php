@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" rel="stylesheet">
     <link href="{{ asset('css/practilink.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/public-viewport.css') }}" rel="stylesheet">
 </head>
 <body class="pl-auth-page">
     <div class="pl-auth-shell">
