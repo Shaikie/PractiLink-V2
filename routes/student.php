@@ -11,6 +11,7 @@ Route::put('/student/profile', [StudentProfileController::class,'update'])->name
 Route::put('/student/profile/password', [StudentProfileController::class,'updatePassword'])->name('student.profile.password.update');
 Route::prefix('student/applications')->name('student.applications.')->group(function () {
     Route::get('/', [StudentApplicationController::class,'index'])->name('index');
+    Route::get('/create', [StudentApplicationController::class,'create'])->name('create');
     Route::post('/', [StudentApplicationController::class,'store'])->name('store');
     Route::get('/{application}', [StudentApplicationController::class,'show'])->name('show');
     Route::put('/{application}', [StudentApplicationController::class,'update'])->name('update');
