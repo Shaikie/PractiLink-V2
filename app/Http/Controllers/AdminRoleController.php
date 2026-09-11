@@ -30,8 +30,10 @@ class AdminRoleController extends Controller
     {
         $data=$request->validate(['name'=>['required','string','max:100'],'slug'=>['required','string','max:100','alpha_dash',Rule::unique('roles','slug')->ignore($role->id)],'description'=>['nullable','string','max:1000'],'permissions'=>['nullable','array'],'permissions.*'=>['integer','exists:permissions,id']]);
         DB::transaction(function () use ($role,$data) {
-            $role->update(['name'=>$data['name'],'slug'=>$data['slug'],'description'=>$data['description'] ?? null]);
-            if ($role->slug !== 'administrator') $role->permissions()->sync($data['permissions'] ?? []);
+            $isAdministrator=$role->slug==='administrator';
+            $role->update(['name'=>$data['name'],'slug'=>$isAdministrator ? 'administrator' : $data['slug'],'description'=>$data['description'] ?? null]);
+            if (!$isAdministrator) $role->permissions()->sync($data['permissions'] ?? []);
+            else foreach (Permission::pluck('id') as $permissionId) $role->permissions()->syncWithoutDetaching($permissionId);
         });
         return back()->with('success','Role updated successfully.');
     }
