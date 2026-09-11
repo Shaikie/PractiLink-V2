@@ -15,7 +15,7 @@ class ApplicationDocumentService
     public function store(Application $application, DocumentType $type, UploadedFile $file, ?int $userId = null): ApplicationDocument
     {
         $extension=strtolower($file->getClientOriginalExtension()); $mime=$file->getMimeType();
-        $rules=$type->allowed_extensions?:['pdf','jpg','jpeg','png','doc','docx']; $mimes=$type->allowed_mime_types?:['application/pdf','image/jpeg','image/png','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        $rules=$type->allowed_extensions?:['pdf','jpg','jpeg','png','docx']; $mimes=$type->allowed_mime_types?:['application/pdf','image/jpeg','image/png','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
         if(!in_array($extension,array_map('strtolower',$rules),true)||!in_array($mime,$mimes,true)) throw ValidationException::withMessages(['document'=>'The uploaded file format does not match the allowed document format.']);
         $this->verifySignature($file,$extension);
         $sizeKb=(int)ceil($file->getSize()/1024); if($sizeKb<$type->min_size_kb||$sizeKb>$type->max_size_kb) throw ValidationException::withMessages(['document'=>"The document must be between {$type->min_size_kb} KB and {$type->max_size_kb} KB."]);
