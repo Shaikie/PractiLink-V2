@@ -1,9 +1,10 @@
 name: Feature validation
 
 on:
-  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
     branches:
-      - 'feat/workflow-placements-documents-final13'
+      - 'feat/professional-landing-login'
 
 jobs:
   validate:
