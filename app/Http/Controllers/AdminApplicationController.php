@@ -15,41 +15,37 @@ class AdminApplicationController extends Controller
 
     public function forward(Request $request, Application $application, WorkflowService $workflows)
     {
-        $workflow=$application->workflow ?? $workflows->startFor($application); $old=$application->only(['status','reviewed_at']);
-        $result=$workflows->transition($workflow,'FORWARD',$request->user(),$request->input('comment'));
-        $status=$result->currentStage?->is_terminal ? 'ACCEPTED' : 'UNDER_REVIEW';
-        $application->update(['status'=>$status,'reviewed_at'=>$status==='ACCEPTED'?now():null]);
-        AuditLogger::record('application.workflow_forwarded',$application,$old,$application->fresh()->only(['status','reviewed_at']));
-        $application->student->notify(new ApplicationStatusUpdated($application->fresh()));
-        return back()->with('success','Application forwarded to the next workflow stage.');
+        return $this->transition($request, $application, $workflows, 'FORWARD', 'UNDER_REVIEW', 'Application forwarded to the next workflow stage.');
     }
 
     public function returnApplication(Request $request, Application $application, WorkflowService $workflows)
     {
-        $request->validate(['comment'=>['required','string','max:5000']]); $workflow=$application->workflow ?? $workflows->startFor($application);
-        $workflows->transition($workflow,'RETURN',$request->user(),$request->input('comment'));
-        $application->update(['status'=>'RETURNED','reviewed_at'=>null,'notes'=>$request->input('comment')]);
-        AuditLogger::record('application.workflow_returned',$application,null,$application->only(['status','notes']));
-        $application->student->notify(new ApplicationStatusUpdated($application->fresh()));
-        return back()->with('success','Application returned to the previous workflow stage.');
+        $request->validate(['comment'=>['required','string','min:5','max:5000']]);
+        $result = $this->transition($request, $application, $workflows, 'RETURN', 'RETURNED', 'Application returned for correction.');
+        return $result;
     }
 
-    public function reject(Request $request, Application $application)
+    public function reject(Request $request, Application $application, WorkflowService $workflows)
     {
-        $data=$request->validate(['comment'=>['required','string','max:5000']]); $old=$application->only(['status','reviewed_at','notes']);
-        $application->update(['status'=>'REJECTED','reviewed_at'=>now(),'notes'=>$data['comment']]);
-        AuditLogger::record('application.rejected',$application,$old,$application->fresh()->only(['status','reviewed_at','notes']));
-        $application->student->notify(new ApplicationStatusUpdated($application->fresh()));
-        return back()->with('success','Application rejected.');
+        $request->validate(['comment'=>['required','string','min:5','max:5000']]);
+        return $this->transition($request, $application, $workflows, 'REJECT', 'REJECTED', 'Application rejected.');
     }
 
-    public function updateStatus(Request $request, Application $application)
+    public function accept(Request $request, Application $application, WorkflowService $workflows)
     {
-        return match($request->input('status')) {
-            'UNDER_REVIEW' => $this->forward($request,$application,app(WorkflowService::class)),
-            'RETURNED' => $this->returnApplication($request,$application,app(WorkflowService::class)),
-            'REJECTED' => $this->reject($request,$application),
-            default => back()->withErrors(['status'=>'Use the workflow actions to change application status.']),
-        };
+        return $this->transition($request, $application, $workflows, 'ACCEPT', 'ACCEPTED', 'Application accepted.');
+    }
+
+    private function transition(Request $request, Application $application, WorkflowService $workflows, string $action, string $status, string $message)
+    {
+        $workflow = $application->workflow ?? $workflows->startFor($application);
+        $old = $application->only(['status','reviewed_at']);
+        $result = $workflows->transition($workflow, $action, $request->user(), $request->input('comment'));
+        $isTerminal = (bool) $result->currentStage?->is_terminal;
+        $finalStatus = $isTerminal && $action === 'FORWARD' ? 'ACCEPTED' : $status;
+        $application->update(['status'=>$finalStatus,'reviewed_at'=>in_array($finalStatus,['ACCEPTED','REJECTED'],true) ? now() : null]);
+        AuditLogger::record('application.workflow_'.strtolower($action),$application,$old,$application->fresh()->only(['status','reviewed_at']));
+        $application->student->notify(new ApplicationStatusUpdated($application->fresh()));
+        return back()->with('success',$message);
     }
 }
