@@ -15,7 +15,7 @@ Route::middleware('permission:applications.review')->group(function () {
     Route::get('applications/{application}', [AdminApplicationController::class,'show'])->name('applications.show');
     Route::put('applications/{application}/status', [AdminApplicationController::class,'updateStatus'])->name('applications.status.update');
     Route::post('applications/{application}/forward', [AdminApplicationController::class,'forward'])->name('applications.forward');
-    Route::post('applications/{application}/return', [AdminApplicationController::class,'return'])->name('applications.return');
+    Route::post('applications/{application}/return', [AdminApplicationController::class,'returnApplication'])->name('applications.return');
     Route::post('applications/{application}/reject', [AdminApplicationController::class,'reject'])->name('applications.reject');
 });
 
