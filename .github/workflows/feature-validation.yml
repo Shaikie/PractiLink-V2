@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: '20'
       - run: composer install --no-interaction --prefer-dist --no-progress
-      - run: npm ci
+      - run: npm install --no-audit --no-fund
       - run: php artisan migrate:fresh --seed --force
       - run: php artisan test
       - run: npm run build
