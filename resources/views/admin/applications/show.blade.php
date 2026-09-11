@@ -1,19 +1,21 @@
 @extends('layouts.admin')
-
-@section('title', 'Review '.$application->reference_number)
-@section('page_title', 'Review Application')
-@section('page_description', $application->reference_number)
-
+@section('title','Review '.$application->reference_number)
+@section('page_title','Review Application')
+@section('page_description',$application->reference_number)
 @section('content')
 <div class="row">
-    <div class="col-lg-7 mb-3"><div class="card"><div class="card-header"><h3 class="card-title">Student information</h3></div><div class="card-body">
-        <p><strong>Name:</strong> {{ $application->student->full_name }}</p><p><strong>Registration:</strong> {{ $application->student->registration_number }}</p><p><strong>Email:</strong> {{ $application->student->email }}</p><p><strong>Institution:</strong> {{ $application->student->institution->name }}</p><p><strong>Course:</strong> {{ $application->student->course->name }}</p><p class="mb-0"><strong>Study level:</strong> {{ $application->student->studyLevel->name }}</p>
-        <hr><p class="mb-0"><strong>Training:</strong> {{ $application->applicationWindow->trainingType->name }} · {{ $application->applicationWindow->name }}</p>
-    </div></div></div>
-    <div class="col-lg-5 mb-3"><div class="card"><div class="card-header"><h3 class="card-title">Update status</h3></div><form method="POST" action="{{ route('admin.applications.status.update', $application) }}">@csrf @method('PUT')<div class="card-body">
-        @if($errors->any())<div class="alert alert-danger"><ul class="mb-0 pl-3">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-        <div class="form-group"><label for="status">Status</label><select id="status" name="status" class="form-control" required>@foreach(['UNDER_REVIEW'=>'Under review','RETURNED'=>'Returned','ACCEPTED'=>'Accepted','REJECTED'=>'Rejected'] as $value=>$label)<option value="{{ $value }}" @selected($application->status === $value)>{{ $label }}</option>@endforeach</select></div>
-        <div class="form-group mb-0"><label for="notes">Review notes</label><textarea id="notes" name="notes" rows="5" class="form-control" maxlength="5000">{{ old('notes', $application->notes) }}</textarea></div>
-    </div><div class="card-footer"><button class="btn btn-primary btn-block">Save status</button></div></form></div></div>
-</div>
+<div class="col-xl-7 mb-3"><div class="card"><div class="card-header"><h3 class="card-title">Student & application</h3></div><div class="card-body">
+<p><strong>Name:</strong> {{ $application->student->full_name }}</p><p><strong>Registration:</strong> {{ $application->student->registration_number }}</p><p><strong>Email:</strong> {{ $application->student->email }}</p><p><strong>Institution:</strong> {{ $application->student->institution->name }}</p><p><strong>Course:</strong> {{ $application->student->course->name }}</p><p><strong>Training:</strong> {{ $application->applicationWindow->trainingType->name }} · {{ $application->applicationWindow->name }}</p><p><strong>Training dates:</strong> {{ $application->training_start_date?->format('d M Y') }} - {{ $application->training_end_date?->format('d M Y') }}</p><hr><p class="mb-0"><strong>Notes:</strong> {{ $application->notes ?: 'None' }}</p>
+</div></div>
+<div class="card"><div class="card-header"><h3 class="card-title">Submitted documents</h3></div><div class="card-body"><div class="row">@forelse($application->documents as $document)<div class="col-md-6 mb-3"><div class="border rounded p-2"><strong>{{ $document->documentType->name }}</strong><div class="small text-muted text-truncate">{{ $document->original_name }}</div>@if($document->isPreviewable())<iframe src="{{ route('student.applications.documents.preview',[$application,$document]) }}" style="width:100%;height:220px;border:0;margin-top:8px"></iframe>@else<div class="py-4 text-center text-muted"><i class="far fa-file fa-2x"></i><div class="small mt-2">Preview unavailable</div></div>@endif<a href="{{ route('student.applications.documents.download',[$application,$document]) }}" class="btn btn-sm btn-outline-primary btn-block mt-2">Download</a></div></div>@empty<div class="col-12 text-muted">No documents attached.</div>@endforelse</div></div></div></div>
+<div class="col-xl-5 mb-3"><div class="card"><div class="card-header"><h3 class="card-title">Workflow action</h3></div><div class="card-body">
+@if($errors->any())<div class="alert alert-danger"><ul class="mb-0 pl-3">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+@if($application->workflow?->currentStage)<div class="alert alert-light border"><div class="small text-muted">Current stage</div><strong>{{ $application->workflow->currentStage->name }}</strong><div class="small text-muted mt-1">Workflow v{{ $application->workflow->version->version }}</div></div>@endif
+<form method="POST" action="{{ route('admin.applications.forward',$application) }}" class="mb-2">@csrf<button class="btn btn-success btn-block" type="submit">Forward to next stage</button></form>
+<form method="POST" action="{{ route('admin.applications.return',$application) }}" class="mb-2">@csrf<textarea name="comment" class="form-control mb-2" rows="3" placeholder="Return comment (required)"></textarea><button class="btn btn-outline-warning btn-block" type="submit">Return to previous stage</button></form>
+<form method="POST" action="{{ route('admin.applications.reject',$application) }}">@csrf<textarea name="comment" class="form-control mb-2" rows="3" placeholder="Rejection reason (required)"></textarea><button class="btn btn-outline-danger btn-block" type="submit">Reject application</button></form>
+</div></div>
+@if($application->status === 'ACCEPTED' && !$application->placement)<a href="{{ route('admin.placements.create',$application) }}" class="btn btn-primary btn-block mb-3">Allocate placement</a>@endif
+@if($application->workflow)<div class="card"><div class="card-header"><h3 class="card-title">Workflow history</h3></div><div class="card-body">@foreach($application->workflow->history->sortBy('acted_at') as $event)<div class="mb-3"><strong>{{ $event->toStage?->name ?? 'Started' }}</strong><div class="small text-muted">{{ $event->acted_at?->format('d M Y, H:i') }}</div>@if($event->comment)<div class="small">{{ $event->comment }}</div>@endif</div>@endforeach</div></div>@endif
+</div></div>
 @endsection
