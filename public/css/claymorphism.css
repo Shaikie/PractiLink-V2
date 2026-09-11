@@ -1,0 +1,159 @@
+:root {
+    --clay-bg: #eef1f8;
+    --clay-surface: #f7f8fc;
+    --clay-text: #263248;
+    --clay-muted: #748097;
+    --clay-primary: #6575e8;
+    --clay-primary-dark: #5363d2;
+    --clay-success: #55b98a;
+    --clay-warning: #e6b75c;
+    --clay-shadow-dark: rgba(132, 141, 165, .28);
+    --clay-shadow-light: rgba(255, 255, 255, .95);
+}
+
+body,
+.content-wrapper {
+    background: var(--clay-bg) !important;
+    color: var(--clay-text);
+}
+
+.content-header {
+    padding-top: 1.35rem;
+    padding-bottom: .65rem;
+}
+
+.content-header h1 {
+    color: var(--clay-text) !important;
+    font-weight: 800;
+    letter-spacing: -.025em;
+}
+
+.content-header .text-muted,
+.clay-muted { color: var(--clay-muted) !important; }
+
+.card,
+.clay-card {
+    background: var(--clay-surface);
+    border: 0 !important;
+    border-radius: 22px !important;
+    box-shadow: 10px 10px 24px var(--clay-shadow-dark), -10px -10px 24px var(--clay-shadow-light) !important;
+    overflow: hidden;
+}
+
+.card-header,
+.card-footer,
+.clay-card-footer {
+    background: transparent !important;
+    border: 0 !important;
+    padding: 1.2rem 1.5rem;
+}
+
+.card-body,
+.clay-card-body { padding: 1.5rem; }
+
+.clay-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+}
+
+.clay-page-narrow { max-width: 900px; margin: 0 auto; }
+
+.clay-section-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.6rem;
+}
+
+.clay-section-heading h3 { margin: .15rem 0 .25rem; font-weight: 800; font-size: 1.1rem; }
+.clay-section-heading p { margin: 0; color: var(--clay-muted); font-size: .84rem; }
+
+.clay-icon,
+.clay-empty-icon {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 15px;
+    color: var(--clay-primary);
+    background: var(--clay-surface);
+    box-shadow: inset 3px 3px 7px var(--clay-shadow-dark), inset -3px -3px 7px var(--clay-shadow-light);
+}
+
+.form-group { margin-bottom: 1.25rem; }
+.form-group label { color: var(--clay-text); font-weight: 700; font-size: .82rem; margin-bottom: .55rem; }
+.form-control,
+.custom-select {
+    min-height: 44px;
+    border: 0 !important;
+    border-radius: 14px !important;
+    background: #eef1f7 !important;
+    color: var(--clay-text) !important;
+    box-shadow: inset 3px 3px 7px rgba(139,148,171,.18), inset -3px -3px 7px rgba(255,255,255,.9) !important;
+}
+.form-control:focus,
+.custom-select:focus {
+    border: 0 !important;
+    box-shadow: inset 2px 2px 5px rgba(139,148,171,.16), 0 0 0 3px rgba(101,117,232,.16) !important;
+}
+
+.btn { border-radius: 13px !important; font-weight: 700; border: 0 !important; transition: transform .15s ease, box-shadow .15s ease; }
+.btn:hover { transform: translateY(-1px); }
+.clay-btn-primary,
+.btn-primary { background: var(--clay-primary) !important; box-shadow: 5px 5px 12px rgba(83,99,210,.27), -4px -4px 10px rgba(255,255,255,.72); }
+.clay-btn-primary:hover,
+.btn-primary:hover { background: var(--clay-primary-dark) !important; }
+.clay-btn-secondary,
+.btn-light { color: var(--clay-text) !important; background: var(--clay-surface) !important; box-shadow: 5px 5px 12px var(--clay-shadow-dark), -5px -5px 12px var(--clay-shadow-light); }
+.clay-btn-outline { color: var(--clay-primary) !important; background: var(--clay-surface) !important; box-shadow: 4px 4px 9px var(--clay-shadow-dark), -4px -4px 9px var(--clay-shadow-light); border: 0 !important; }
+.btn-success { background: var(--clay-success) !important; box-shadow: 5px 5px 12px rgba(71,145,110,.22), -4px -4px 10px rgba(255,255,255,.7); }
+
+.clay-table { color: var(--clay-text); }
+.clay-table thead th { background: transparent !important; border: 0 !important; color: var(--clay-muted) !important; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; padding: 1rem 1.25rem; }
+.clay-table tbody td { border-top: 1px solid rgba(142,151,174,.12) !important; padding: 1.15rem 1.25rem; vertical-align: middle; }
+.clay-table tbody tr:hover { background: rgba(255,255,255,.32); }
+
+.clay-badge { border-radius: 999px; padding: .45rem .7rem; font-weight: 700; }
+.badge-primary { background: #7583e8 !important; }
+.badge-success { background: #62bd94 !important; }
+.badge-warning { background: #e8bd68 !important; color: #5b471b !important; }
+
+.clay-empty-state { text-align: center; padding: 4rem 2rem; }
+.clay-empty-icon { margin: 0 auto 1rem; width: 64px; height: 64px; font-size: 1.4rem; }
+.clay-empty-state h3 { font-weight: 800; margin-bottom: .4rem; }
+.clay-empty-state p { max-width: 480px; margin: 0 auto 1.4rem; color: var(--clay-muted); }
+
+.clay-stage,
+.clay-transition {
+    padding: 1.35rem;
+    margin-bottom: 1rem;
+    border-radius: 18px;
+    background: var(--clay-surface);
+    box-shadow: inset 3px 3px 8px rgba(132,141,165,.16), inset -3px -3px 8px rgba(255,255,255,.9);
+}
+
+.clay-stage-header,
+.clay-transition-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.1rem; }
+.clay-stage-title { display:flex; align-items:center; gap:.7rem; font-weight:800; }
+.clay-step {
+    width: 30px; height:30px; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:10px; color:var(--clay-primary); font-size:.76rem;
+    box-shadow: inset 2px 2px 5px rgba(132,141,165,.18), inset -2px -2px 5px rgba(255,255,255,.9);
+}
+.clay-start-badge { border-radius:999px; padding:.35rem .65rem; font-size:.7rem; font-weight:800; color:#fff; background:var(--clay-success); }
+.clay-flow { display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-bottom:1rem; }
+.clay-flow-pill { padding:.5rem .75rem; border-radius:999px; background:#eef1f7; box-shadow:inset 2px 2px 5px rgba(132,141,165,.14), inset -2px -2px 5px rgba(255,255,255,.9); font-size:.78rem; font-weight:700; }
+.clay-flow-arrow { color:var(--clay-muted); }
+
+@media (max-width: 767.98px) {
+    .content-header .text-md-right { text-align: left !important; }
+    .clay-card-body, .card-body { padding: 1.1rem; }
+    .clay-card-footer { align-items: stretch; flex-direction: column; }
+    .clay-card-footer .btn { width: 100%; }
+    .clay-table thead th, .clay-table tbody td { padding: .9rem .8rem; white-space: nowrap; }
+    .clay-page-narrow { max-width: none; }
+}
