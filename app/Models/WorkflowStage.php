@@ -7,7 +7,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WorkflowStage extends Model
 {
-    protected $fillable = ['workflow_version_id', 'name', 'code', 'stage_order', 'required_permission', 'is_terminal'];
-    protected $casts = ['is_terminal' => 'boolean'];
+    protected $fillable = [
+        'workflow_version_id',
+        'name',
+        'code',
+        'stage_order',
+        'required_permission',
+        'responsible_role_id',
+        'is_terminal',
+        'is_starting',
+    ];
+
+    protected $casts = [
+        'is_terminal' => 'boolean',
+        'is_starting' => 'boolean',
+    ];
+
     public function version(): BelongsTo { return $this->belongsTo(WorkflowVersion::class, 'workflow_version_id'); }
+    public function responsibleRole(): BelongsTo { return $this->belongsTo(Role::class, 'responsible_role_id'); }
 }
