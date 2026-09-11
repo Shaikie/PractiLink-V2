@@ -4,39 +4,29 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Application extends Model
 {
     protected $fillable = [
-        'student_id',
-        'application_window_id',
-        'reference_number',
-        'status',
-        'notes',
-        'submitted_at',
-        'reviewed_at',
+        'student_id', 'application_window_id', 'reference_number', 'status', 'notes',
+        'training_start_date', 'training_end_date', 'submitted_at', 'reviewed_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'submitted_at' => 'datetime',
-            'reviewed_at' => 'datetime',
+            'training_start_date' => 'date', 'training_end_date' => 'date',
+            'submitted_at' => 'datetime', 'reviewed_at' => 'datetime',
         ];
     }
 
-    public function student(): BelongsTo
-    {
-        return $this->belongsTo(Student::class);
-    }
+    public function student(): BelongsTo { return $this->belongsTo(Student::class); }
+    public function applicationWindow(): BelongsTo { return $this->belongsTo(ApplicationWindow::class); }
+    public function documents(): HasMany { return $this->hasMany(ApplicationDocument::class); }
+    public function workflow(): HasOne { return $this->hasOne(ApplicationWorkflow::class); }
+    public function placement(): HasOne { return $this->hasOne(Placement::class); }
 
-    public function applicationWindow(): BelongsTo
-    {
-        return $this->belongsTo(ApplicationWindow::class);
-    }
-
-    public function isEditable(): bool
-    {
-        return in_array($this->status, ['DRAFT', 'RETURNED'], true);
-    }
+    public function isEditable(): bool { return in_array($this->status, ['DRAFT', 'RETURNED'], true); }
 }
