@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class RolePermissionSeeder extends Seeder
 {
@@ -26,8 +25,12 @@ class RolePermissionSeeder extends Seeder
             ['name'=>'Manage organizations','slug'=>'organizations.manage'],
             ['name'=>'Manage placements','slug'=>'placements.manage'],
             ['name'=>'Manage reports','slug'=>'reports.manage'],
+            ['name'=>'Act on Secretary Review stage','slug'=>'workflow.secretary_review'],
+            ['name'=>'Act on HOD Review stage','slug'=>'workflow.hod_review'],
+            ['name'=>'Act on HR Review stage','slug'=>'workflow.hr_review'],
+            ['name'=>'Act on Placement stage','slug'=>'workflow.placement'],
         ];
-        foreach($permissions as $permission) DB::table('permissions')->updateOrInsert(['slug'=>$permission['slug']],array_merge($permission,['updated_at'=>now()]));
+        foreach($permissions as $permission) DB::table('permissions')->updateOrInsert(['slug'=>$permission['slug']],array_merge($permission,['created_at'=>now(),'updated_at'=>now()]));
 
         $roles=[
             ['name'=>'Administrator','slug'=>'administrator','description'=>'Full system administration.'],
@@ -37,24 +40,21 @@ class RolePermissionSeeder extends Seeder
             ['name'=>'Placement Officer','slug'=>'placement-officer','description'=>'Manages placement and supervisor assignment.'],
             ['name'=>'Supervisor','slug'=>'supervisor','description'=>'Supervises assigned students.'],
         ];
-        foreach($roles as $role) DB::table('roles')->updateOrInsert(['slug'=>$role['slug']],array_merge($role,['updated_at'=>now()]));
+        foreach($roles as $role) DB::table('roles')->updateOrInsert(['slug'=>$role['slug']],array_merge($role,['created_at'=>now(),'updated_at'=>now()]));
 
         $permissionIds=DB::table('permissions')->pluck('id','slug');
         $roleIds=DB::table('roles')->pluck('id','slug');
-        $administrator=$roleIds['administrator'];
-        foreach($permissionIds as $permissionId) DB::table('role_permissions')->updateOrInsert(['role_id'=>$administrator,'permission_id'=>$permissionId]);
+        foreach($permissionIds as $permissionId) DB::table('role_permissions')->updateOrInsert(['role_id'=>$roleIds['administrator'],'permission_id'=>$permissionId]);
 
         $rolePermissions=[
-            'secretary'=>['applications.view','applications.review','applications.forward','applications.return'],
-            'hod'=>['applications.view','applications.review','applications.forward','applications.return','applications.reject','applications.accept'],
-            'hr'=>['applications.view','applications.review','applications.forward','applications.return','applications.reject','applications.accept'],
-            'placement-officer'=>['applications.view','applications.review','applications.forward','applications.return','applications.assign_supervisor','applications.accept','placements.create','placements.manage'],
+            'secretary'=>['applications.view','applications.review','applications.forward','applications.return','workflow.secretary_review'],
+            'hod'=>['applications.view','applications.review','applications.forward','applications.return','applications.reject','applications.accept','workflow.hod_review'],
+            'hr'=>['applications.view','applications.review','applications.forward','applications.return','applications.reject','applications.accept','workflow.hr_review'],
+            'placement-officer'=>['applications.view','applications.review','applications.forward','applications.return','applications.assign_supervisor','applications.accept','placements.create','placements.manage','workflow.placement'],
             'supervisor'=>['applications.view'],
         ];
         foreach($rolePermissions as $roleSlug=>$slugs){
-            foreach($slugs as $slug){
-                if(isset($permissionIds[$slug])) DB::table('role_permissions')->updateOrInsert(['role_id'=>$roleIds[$roleSlug],'permission_id'=>$permissionIds[$slug]]);
-            }
+            foreach($slugs as $slug){ if(isset($permissionIds[$slug])) DB::table('role_permissions')->updateOrInsert(['role_id'=>$roleIds[$roleSlug],'permission_id'=>$permissionIds[$slug]]); }
         }
     }
 }
