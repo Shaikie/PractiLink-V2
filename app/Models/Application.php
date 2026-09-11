@@ -11,6 +11,7 @@ class Application extends Model
 {
     protected $fillable = [
         'student_id', 'application_window_id', 'reference_number', 'status', 'notes',
+        'reason_for_application', 'interests', 'expected_objectives', 'current_study_year',
         'training_start_date', 'training_end_date', 'submitted_at', 'reviewed_at',
     ];
 
@@ -19,6 +20,7 @@ class Application extends Model
         return [
             'training_start_date' => 'date', 'training_end_date' => 'date',
             'submitted_at' => 'datetime', 'reviewed_at' => 'datetime',
+            'current_study_year' => 'integer',
         ];
     }
 
