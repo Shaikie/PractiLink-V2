@@ -19,34 +19,69 @@ class StudentApplicationController extends Controller
         $student=Auth::guard('students')->user();
         return view('student.applications.index',['applications'=>$student->applications()->with(['applicationWindow.trainingType','documents.documentType','workflow.currentStage'])->latest()->get(),'windows'=>ApplicationWindow::with('trainingType')->where('is_active',true)->where('opens_at','<=',now())->where('closes_at','>=',now())->orderBy('closes_at')->get()]);
     }
+
     public function store(Request $request)
     {
-        $validated=$request->validate(['application_window_id'=>['required','integer','exists:application_windows,id'],'notes'=>['nullable','string','max:5000'],'training_start_date'=>['required','date_format:Y-m-d','after_or_equal:today'],'training_end_date'=>['required','date_format:Y-m-d','after:training_start_date']]);
-        $student=Auth::guard('students')->user(); $window=ApplicationWindow::findOrFail($validated['application_window_id']); abort_unless($window->isOpen(),422,'This application window is not currently open.');
-        $application=Application::firstOrCreate(['student_id'=>$student->id,'application_window_id'=>$window->id],['reference_number'=>$this->referenceNumber(),'notes'=>$validated['notes']??null,'training_start_date'=>$validated['training_start_date'],'training_end_date'=>$validated['training_end_date'],'status'=>'DRAFT']);
-        if(!$application->wasRecentlyCreated && !$application->isEditable()) return back()->withErrors(['application_window_id'=>'You already have a non-editable application for this window.']);
-        if($application->isEditable()) $application->update(collect($validated)->only(['notes','training_start_date','training_end_date'])->all());
-        return redirect()->route('student.applications.show',$application);
+        $validated=$request->validate($this->draftRules());
+        $student=Auth::guard('students')->user();
+        $window=ApplicationWindow::findOrFail($validated['application_window_id']);
+        abort_unless($window->isOpen(),422,'This application window is not currently open.');
+        $existing=Application::where('student_id',$student->id)->where('application_window_id',$window->id)->first();
+        if($existing && !$existing->isEditable()) return back()->withErrors(['application_window_id'=>'You already have a non-editable application for this window.']);
+        $fields=$this->applicationFields($validated);
+        if($existing){ $existing->update($fields); $application=$existing; }
+        else { $application=Application::create($fields+['student_id'=>$student->id,'application_window_id'=>$window->id,'reference_number'=>$this->referenceNumber(),'status'=>'DRAFT']); }
+        return redirect()->route('student.applications.show',$application)->with('success','Draft application saved.');
     }
+
+    public function update(Request $request, Application $application)
+    {
+        $this->authorizeStudent($application);
+        abort_unless($application->isEditable(),422,'This application cannot be edited in its current state.');
+        abort_unless($application->applicationWindow->isOpen(),422,'The application window is no longer open.');
+        $validated=$request->validate($this->draftRules(false));
+        $application->update($this->applicationFields($validated));
+        return back()->with('success','Application details updated.');
+    }
+
     public function show(Application $application)
     {
         $this->authorizeStudent($application);
         return view('student.applications.show',['application'=>$application->load(['applicationWindow.trainingType','documents.documentType','workflow.currentStage','workflow.version','workflow.history.toStage']),'documentTypes'=>DocumentType::where('is_active',true)->orderBy('name')->get()]);
     }
+
     public function submit(Application $application, WorkflowService $workflows)
     {
         $this->authorizeStudent($application); abort_unless($application->isEditable(),422,'This application cannot be submitted in its current state.'); abort_unless($application->applicationWindow->isOpen(),422,'The application window is no longer open.');
-        abort_unless($application->training_start_date && $application->training_end_date,422,'Training start and end dates are required.'); abort_unless($application->training_start_date->isToday() || $application->training_start_date->isFuture(),422,'Training start date cannot be in the past.'); abort_unless($application->training_end_date->isAfter($application->training_start_date),422,'Training end date must be after the start date.');
+        $requiredFields=['reason_for_application'=>'Reason for application','interests'=>'Areas of interest','expected_objectives'=>'Expected objectives','current_study_year'=>'Current study year','training_start_date'=>'Training start date','training_end_date'=>'Training end date'];
+        foreach($requiredFields as $field=>$label) abort_unless(filled($application->{$field}),422,"{$label} is required before submission.");
+        abort_unless($application->training_start_date->isToday() || $application->training_start_date->isFuture(),422,'Training start date cannot be in the past.'); abort_unless($application->training_end_date->isAfter($application->training_start_date),422,'Training end date must be after the start date.');
         $required=DocumentType::where('is_active',true)->where('is_required',true)->pluck('id'); $uploaded=$application->documents()->pluck('document_type_id'); $missing=$required->diff($uploaded);
         if($missing->isNotEmpty()) throw ValidationException::withMessages(['documents'=>'Please upload all required documents before submitting your application.']);
         $old=$application->only(['status','submitted_at','reviewed_at']); $application->update(['status'=>'SUBMITTED','submitted_at'=>now(),'reviewed_at'=>null]); $workflows->startFor($application->fresh());
         AuditLogger::record('application.submitted',$application,$old,$application->fresh()->only(['status','submitted_at','reviewed_at']));
         return redirect()->route('student.applications.show',$application)->with('success','Application submitted successfully.');
     }
+
     public function cancel(Application $application)
     {
         $this->authorizeStudent($application); abort_unless(in_array($application->status,['DRAFT','SUBMITTED','RETURNED'],true),422,'This application cannot be cancelled in its current state.'); $old=['status'=>$application->status]; $application->update(['status'=>'CANCELLED']); AuditLogger::record('application.cancelled',$application,$old,['status'=>'CANCELLED']); return redirect()->route('student.applications.index')->with('success','Application cancelled.');
     }
+
+    private function draftRules(bool $withWindow=true): array
+    {
+        return [
+            'application_window_id'=>[$withWindow?'required':'sometimes','integer','exists:application_windows,id'],
+            'reason_for_application'=>['required','string','max:10000'],
+            'interests'=>['required','string','max:10000'],
+            'expected_objectives'=>['required','string','max:10000'],
+            'current_study_year'=>['required','integer','min:1','max:8'],
+            'training_start_date'=>['required','date_format:Y-m-d','after_or_equal:today'],
+            'training_end_date'=>['required','date_format:Y-m-d','after:training_start_date'],
+        ];
+    }
+
+    private function applicationFields(array $data): array { return collect($data)->only(['reason_for_application','interests','expected_objectives','current_study_year','training_start_date','training_end_date'])->all(); }
     private function authorizeStudent(Application $application): void { abort_unless($application->student_id===Auth::guard('students')->id(),403); }
     private function referenceNumber(): string { do{$reference='PL-'.now()->format('Ymd').'-'.Str::upper(Str::random(8));}while(Application::where('reference_number',$reference)->exists()); return $reference; }
 }
