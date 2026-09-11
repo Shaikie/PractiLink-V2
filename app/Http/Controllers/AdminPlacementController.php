@@ -10,6 +10,7 @@ use App\Models\PlacementStatusHistory;
 use App\Models\User;
 use App\Support\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -38,19 +39,37 @@ class AdminPlacementController extends Controller
         if ($data['supervisor_user_id'] && !$this->eligibleSupervisors()->whereKey($data['supervisor_user_id'])->exists()) {
             throw ValidationException::withMessages(['supervisor_user_id'=>'The selected supervisor is not eligible for supervisor assignment.']);
         }
+        abort_unless(Organization::whereKey($data['organization_id'])->where('is_active', true)->exists(), 422, 'The selected organization is not active.');
         if($data['start_date'] !== optional($application->training_start_date)->format('Y-m-d') || $data['end_date'] !== optional($application->training_end_date)->format('Y-m-d')) throw ValidationException::withMessages(['start_date'=>'Placement dates must match the approved application training dates.']);
-        $placement=Placement::create($data + ['application_id'=>$application->id,'student_id'=>$application->student_id,'reference_number'=>$this->reference(),'status'=>'ALLOCATED']);
-        PlacementStatusHistory::create(['placement_id'=>$placement->id,'to_status'=>'ALLOCATED','changed_by'=>$request->user()->id,'changed_at'=>now()]);
-        AuditLogger::record('placement.created',$placement,null,$placement->toArray());
+        $placement = DB::transaction(function () use ($data, $application, $request): Placement {
+            $application->refresh();
+            abort_unless($application->status === 'ACCEPTED' && !$application->placement()->exists(), 422, 'This application already has a placement or is no longer accepted.');
+            $placement = Placement::create($data + ['application_id'=>$application->id,'student_id'=>$application->student_id,'reference_number'=>$this->reference(),'status'=>'ALLOCATED']);
+            PlacementStatusHistory::create(['placement_id'=>$placement->id,'to_status'=>'ALLOCATED','changed_by'=>$request->user()->id,'changed_at'=>now()]);
+            AuditLogger::record('placement.created',$placement,null,$placement->toArray());
+            return $placement;
+        });
         return redirect()->route('admin.placements.index')->with('success','Placement allocated successfully.');
     }
 
     public function updateStatus(Request $request, Placement $placement)
     {
         $data=$request->validate(['status'=>['required','in:ALLOCATED,ACTIVE,COMPLETED,CANCELLED'],'comment'=>['nullable','string','max:5000']]);
-        $old=$placement->status; $placement->update(['status'=>$data['status']]);
-        PlacementStatusHistory::create(['placement_id'=>$placement->id,'from_status'=>$old,'to_status'=>$placement->status,'changed_by'=>$request->user()->id,'comment'=>$data['comment']??null,'changed_at'=>now()]);
-        AuditLogger::record('placement.status_updated',$placement,['status'=>$old],['status'=>$placement->status]);
+        $allowedTransitions = [
+            'ALLOCATED' => ['ACTIVE', 'CANCELLED'],
+            'ACTIVE' => ['COMPLETED', 'CANCELLED'],
+            'COMPLETED' => [],
+            'CANCELLED' => [],
+        ];
+        abort_unless(in_array($data['status'], $allowedTransitions[$placement->status] ?? [], true), 422, 'This placement status transition is not allowed.');
+        DB::transaction(function () use ($placement, $data, $request, $allowedTransitions): void {
+            $placement->refresh();
+            $old=$placement->status;
+            abort_unless(in_array($data['status'], $allowedTransitions[$old] ?? [], true), 422, 'This placement status transition is no longer allowed.');
+            $placement->update(['status'=>$data['status']]);
+            PlacementStatusHistory::create(['placement_id'=>$placement->id,'from_status'=>$old,'to_status'=>$placement->status,'changed_by'=>$request->user()->id,'comment'=>$data['comment']??null,'changed_at'=>now()]);
+            AuditLogger::record('placement.status_updated',$placement,['status'=>$old],['status'=>$placement->status]);
+        });
         return back()->with('success','Placement status updated.');
     }
 

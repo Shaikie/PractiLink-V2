@@ -39,6 +39,6 @@ class StudentApplicationDocumentController extends Controller
     private function authorizeView(Application $application): void
     {
         if(Auth::guard('students')->check()){ abort_unless($application->student_id===Auth::guard('students')->id(),403); return; }
-        abort_unless(Auth::guard('web')->check() && Auth::guard('web')->user()->hasPermission('applications.review'),403);
+        abort_unless(Auth::guard('web')->check() && Auth::guard('web')->user()->hasPermission('applications.view'),403);
     }
 }

@@ -9,6 +9,7 @@ use App\Services\WorkflowService;
 use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -27,13 +28,13 @@ class StudentApplicationController extends Controller
     {
         $validated = $this->validateDraft($request);
         $student = Auth::guard('students')->user();
-        $window = ApplicationWindow::findOrFail($validated['application_window_id']);
+        $window = ApplicationWindow::whereKey($validated['application_window_id'])->where('is_active', true)->firstOrFail();
         abort_unless($window->isOpen(), 422, 'This application window is not currently open.');
 
-        $application = Application::firstOrCreate(
+        $application = DB::transaction(fn () => Application::firstOrCreate(
             ['student_id' => $student->id, 'application_window_id' => $window->id],
             ['reference_number' => $this->referenceNumber(), 'status' => 'DRAFT']
-        );
+        ));
 
         if (!$application->wasRecentlyCreated && !$application->isEditable()) {
             return back()->withErrors(['application_window_id' => 'You already have a non-editable application for this window.']);
@@ -84,10 +85,14 @@ class StudentApplicationController extends Controller
             throw ValidationException::withMessages(['documents' => 'Please upload all required documents before submitting your application.']);
         }
 
-        $old = $application->only(['status', 'submitted_at', 'reviewed_at']);
-        $application->update(['status' => 'SUBMITTED', 'submitted_at' => now(), 'reviewed_at' => null]);
-        $workflows->startFor($application->fresh());
-        AuditLogger::record('application.submitted', $application, $old, $application->fresh()->only(['status', 'submitted_at', 'reviewed_at']));
+        DB::transaction(function () use ($application, $workflows): void {
+            $application->refresh();
+            abort_unless($application->isEditable(), 422, 'This application has already been submitted.');
+            $old = $application->only(['status', 'submitted_at', 'reviewed_at']);
+            $application->update(['status' => 'SUBMITTED', 'submitted_at' => now(), 'reviewed_at' => null]);
+            $workflows->startFor($application->fresh());
+            AuditLogger::record('application.submitted', $application, $old, $application->fresh()->only(['status', 'submitted_at', 'reviewed_at']));
+        });
         return redirect()->route('student.applications.show', $application)->with('success', 'Application submitted successfully.');
     }
 
