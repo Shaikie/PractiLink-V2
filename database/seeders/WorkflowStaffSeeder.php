@@ -22,6 +22,16 @@ class WorkflowStaffSeeder extends Seeder
             ['name' => 'CTO', 'description' => 'Final placement allocation and supervisor assignment.', 'updated_at' => now(), 'created_at' => now()],
         );
 
+        $cto = Role::where('slug','cto')->firstOrFail();
+        $ctoPermissions = DB::table('permissions')->whereIn('slug', [
+            'applications.view','applications.review','applications.return',
+            'applications.documents','applications.assign_supervisor','placements.manage',
+        ])->pluck('id');
+        DB::table('role_permissions')->where('role_id',$cto->id)->delete();
+        foreach ($ctoPermissions as $permissionId) {
+            DB::table('role_permissions')->insertOrIgnore(['role_id'=>$cto->id,'permission_id'=>$permissionId]);
+        }
+
         $users = [
             ['fullname'=>'Workflow Secretary','username'=>'workflow.secretary','email'=>'secretary@practilink.test','role'=>'secretary'],
             ['fullname'=>'Workflow HR Officer','username'=>'workflow.hr','email'=>'hr@practilink.test','role'=>'hr'],
