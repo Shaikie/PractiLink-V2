@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class StudentApplicationController extends Controller
 {
@@ -99,55 +98,6 @@ class StudentApplicationController extends Controller
     public function submit(Application $application, ApplicationLifecycleService $lifecycle)
     {
         $this->authorizeStudent($application);
-        abort_unless($application->isEditable(), 422, 'This application cannot be submitted in its current state.');
-        abort_unless($application->applicationWindow->isOpen(), 422, 'The application window is no longer open.');
-        abort_unless($application->department_id, 422, 'Please select the department that should review your application.');
-
-        $requiredFields = [
-            'reason_for_application',
-            'interests',
-            'expected_objectives',
-            'current_study_year',
-            'training_start_date',
-            'training_end_date',
-        ];
-
-        foreach ($requiredFields as $field) {
-            if (blank($application->{$field})) {
-                throw ValidationException::withMessages([
-                    $field => 'This field is required before submission.',
-                ]);
-            }
-        }
-
-        abort_unless(
-            $application->current_study_year >= 1 && $application->current_study_year <= 20,
-            422,
-            'Current study year is invalid.'
-        );
-        abort_unless(
-            $application->training_start_date->isToday() || $application->training_start_date->isFuture(),
-            422,
-            'Training start date cannot be in the past.'
-        );
-        abort_unless(
-            $application->training_end_date->isAfter($application->training_start_date),
-            422,
-            'Training end date must be after the start date.'
-        );
-
-        $required = DocumentType::where('is_active', true)
-            ->where('is_required', true)
-            ->pluck('id');
-        $uploaded = $application->documents()->pluck('document_type_id');
-        $missing = $required->diff($uploaded);
-
-        if ($missing->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'documents' => 'Please upload all required documents before submitting your application.',
-            ]);
-        }
-
         $updated = $lifecycle->submit($application);
 
         return redirect()->route('student.applications.show', $updated)
@@ -157,7 +107,7 @@ class StudentApplicationController extends Controller
     public function cancel(Application $application, ApplicationLifecycleService $lifecycle)
     {
         $this->authorizeStudent($application);
-        $updated = $lifecycle->cancel($application);
+        $lifecycle->cancel($application);
 
         return redirect()->route('student.applications.index')
             ->with('success', 'Application cancelled.');
