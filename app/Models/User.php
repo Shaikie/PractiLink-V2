@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -19,6 +19,7 @@ class User extends Authenticatable
 
     public function roles(): BelongsToMany { return $this->belongsToMany(Role::class, 'user_roles'); }
     public function permissions(): BelongsToMany { return $this->belongsToMany(Permission::class, 'permission_user'); }
+    public function departments(): BelongsToMany { return $this->belongsToMany(Department::class, 'department_user'); }
 
     public function hasPermission(string $permission): bool
     {
