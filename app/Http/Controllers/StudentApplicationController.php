@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Application;
 use App\Models\ApplicationWindow;
+use App\Models\Department;
 use App\Models\DocumentType;
 use App\Services\WorkflowService;
 use App\Support\AuditLogger;
@@ -19,7 +20,7 @@ class StudentApplicationController extends Controller
     {
         $student = Auth::guard('students')->user();
         return view('student.applications.index', [
-            'applications' => $student->applications()->with(['applicationWindow.trainingType', 'documents.documentType', 'workflow.currentStage'])->latest()->get(),
+            'applications' => $student->applications()->with(['applicationWindow.trainingType', 'department', 'documents.documentType', 'workflow.currentStage'])->latest()->get(),
         ]);
     }
 
@@ -27,6 +28,7 @@ class StudentApplicationController extends Controller
     {
         return view('student.applications.create', [
             'windows' => ApplicationWindow::with('trainingType')->where('is_active', true)->where('opens_at', '<=', now())->where('closes_at', '>=', now())->orderBy('closes_at')->get(),
+            'departments' => Department::orderBy('name')->get(),
         ]);
     }
 
@@ -63,8 +65,9 @@ class StudentApplicationController extends Controller
     {
         $this->authorizeStudent($application);
         return view('student.applications.show', [
-            'application' => $application->load(['applicationWindow.trainingType', 'documents.documentType', 'workflow.currentStage', 'workflow.version', 'workflow.history.toStage']),
+            'application' => $application->load(['applicationWindow.trainingType', 'department', 'documents.documentType', 'workflow.currentStage', 'workflow.version', 'workflow.history.toStage']),
             'documentTypes' => DocumentType::where('is_active', true)->orderBy('name')->get(),
+            'departments' => Department::orderBy('name')->get(),
         ]);
     }
 
@@ -73,6 +76,7 @@ class StudentApplicationController extends Controller
         $this->authorizeStudent($application);
         abort_unless($application->isEditable(), 422, 'This application cannot be submitted in its current state.');
         abort_unless($application->applicationWindow->isOpen(), 422, 'The application window is no longer open.');
+        abort_unless($application->department_id, 422, 'Please select the department that should review your application.');
 
         $requiredFields = ['reason_for_application', 'interests', 'expected_objectives', 'current_study_year', 'training_start_date', 'training_end_date'];
         foreach ($requiredFields as $field) {
@@ -116,6 +120,7 @@ class StudentApplicationController extends Controller
     {
         return $request->validate([
             'application_window_id' => [$requireWindow ? 'required' : 'nullable', 'integer', 'exists:application_windows,id'],
+            'department_id' => ['required', 'integer', 'exists:departments,id'],
             'reason_for_application' => ['required', 'string', 'min:20', 'max:5000'],
             'interests' => ['required', 'string', 'min:10', 'max:5000'],
             'expected_objectives' => ['required', 'string', 'min:20', 'max:5000'],
