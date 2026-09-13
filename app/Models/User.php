@@ -19,6 +19,7 @@ class User extends Authenticatable
 
     public function roles(): BelongsToMany { return $this->belongsToMany(Role::class, 'user_roles'); }
     public function permissions(): BelongsToMany { return $this->belongsToMany(Permission::class, 'permission_user'); }
+    public function departments(): BelongsToMany { return $this->belongsToMany(Department::class, 'department_user'); }
 
     public function hasPermission(string $permission): bool
     {

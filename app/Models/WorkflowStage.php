@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkflowStage extends Model
 {
@@ -25,4 +26,5 @@ class WorkflowStage extends Model
 
     public function version(): BelongsTo { return $this->belongsTo(WorkflowVersion::class, 'workflow_version_id'); }
     public function responsibleRole(): BelongsTo { return $this->belongsTo(Role::class, 'responsible_role_id'); }
+    public function transitions(): HasMany { return $this->hasMany(WorkflowTransition::class, 'from_stage_id'); }
 }

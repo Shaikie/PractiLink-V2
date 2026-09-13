@@ -1,0 +1,34 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('applications', function (Blueprint $table) {
+            $table->foreignId('department_id')->nullable()->after('student_id')->constrained('departments')->restrictOnDelete();
+            $table->index(['department_id', 'status']);
+        });
+
+        Schema::create('department_user', function (Blueprint $table) {
+            $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->timestamps();
+            $table->primary(['department_id', 'user_id']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('department_user');
+
+        Schema::table('applications', function (Blueprint $table) {
+            $table->dropForeign(['department_id']);
+            $table->dropIndex(['department_id', 'status']);
+            $table->dropColumn('department_id');
+        });
+    }
+};

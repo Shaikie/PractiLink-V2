@@ -10,14 +10,27 @@ use Illuminate\Http\Request;
 
 class AdminApplicationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('admin.applications.index', [
-            'applications' => Application::with(['student', 'applicationWindow.trainingType', 'workflow.currentStage'])
-                ->whereIn('status', ['SUBMITTED', 'UNDER_REVIEW', 'RETURNED', 'ACCEPTED', 'REJECTED'])
-                ->latest('submitted_at')
-                ->get(),
-        ]);
+        $user = $request->user();
+        $roleIds = $user->roles()->pluck('roles.id');
+
+        $query = Application::with(['student', 'department', 'applicationWindow.trainingType', 'workflow.currentStage'])
+            ->whereIn('status', ['SUBMITTED', 'UNDER_REVIEW', 'RETURNED', 'ACCEPTED', 'REJECTED'])
+            ->latest('submitted_at');
+
+        if (!$user->roles()->where('slug','administrator')->exists()) {
+            $query->where(function ($q) use ($roleIds) {
+                $q->whereHas('workflow.currentStage', fn ($stage) => $stage->whereIn('responsible_role_id', $roleIds))
+                    ->orWhereHas('workflow.currentStage.transitions', fn ($transition) => $transition->whereIn('responsible_role_id', $roleIds));
+            });
+
+            if ($user->roles()->where('slug','hod')->exists()) {
+                $query->whereIn('department_id', $user->departments()->pluck('departments.id'));
+            }
+        }
+
+        return view('admin.applications.index', ['applications' => $query->get()]);
     }
 
     public function show(Application $application)
@@ -26,6 +39,7 @@ class AdminApplicationController extends Controller
             'student.institution',
             'student.course',
             'student.studyLevel',
+            'department',
             'applicationWindow.trainingType',
             'documents.documentType',
             'workflow.currentStage',
@@ -35,7 +49,8 @@ class AdminApplicationController extends Controller
 
         $transitions = $application->workflow?->version?->transitions()
             ->where('from_stage_id', $application->workflow->current_stage_id)
-            ->with(['toStage', 'responsibleRole'])
+            ->where('action', '!=', 'COMPLETE_PLACEMENT')
+            ->with(['fromStage', 'toStage', 'responsibleRole'])
             ->get() ?? collect();
 
         return view('admin.applications.show', [
@@ -54,21 +69,10 @@ class AdminApplicationController extends Controller
         $workflow = $application->workflow ?? $workflows->startFor($application);
         $old = $application->only(['status', 'reviewed_at']);
 
-        $workflows->transition(
-            $workflow,
-            $data['action'],
-            $request->user(),
-            $data['comment'] ?? null,
-        );
+        $workflows->transition($workflow, $data['action'], $request->user(), $data['comment'] ?? null);
 
         $application->refresh();
-        AuditLogger::record(
-            'application.workflow_action',
-            $application,
-            $old,
-            $application->only(['status', 'reviewed_at']),
-        );
-
+        AuditLogger::record('application.workflow_action', $application, $old, $application->only(['status', 'reviewed_at']));
         $application->student->notify(new ApplicationStatusUpdated($application));
 
         return back()->with('success', 'Workflow action completed successfully.');

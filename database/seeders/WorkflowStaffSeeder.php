@@ -6,22 +6,23 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
-class WorkflowTestUserSeeder extends Seeder
+class WorkflowStaffSeeder extends Seeder
 {
     public function run(): void
     {
         $password = config('app.workflow_test_password');
 
         if (blank($password)) {
-            throw new \RuntimeException('Set APP_WORKFLOW_TEST_PASSWORD in .env before running WorkflowTestUserSeeder.');
+            throw new \RuntimeException('Set APP_WORKFLOW_TEST_PASSWORD in .env before seeding workflow staff.');
         }
 
         $users = [
             ['fullname'=>'Workflow Secretary','username'=>'workflow.secretary','email'=>'secretary@practilink.test','role'=>'secretary'],
-            ['fullname'=>'Workflow HOD','username'=>'workflow.hod','email'=>'hod@practilink.test','role'=>'hod'],
             ['fullname'=>'Workflow HR Officer','username'=>'workflow.hr','email'=>'hr@practilink.test','role'=>'hr'],
-            ['fullname'=>'Workflow Placement Officer','username'=>'workflow.placement','email'=>'placement@practilink.test','role'=>'placement-officer'],
-            ['fullname'=>'Workflow Supervisor','username'=>'workflow.supervisor','email'=>'supervisor@practilink.test','role'=>'supervisor'],
+            ['fullname'=>'Workflow CTO','username'=>'workflow.cto','email'=>'cto@practilink.test','role'=>'cto'],
+            ['fullname'=>'Workflow HOD - Computer Science','username'=>'workflow.hod.cs','email'=>'hod.cs@practilink.test','role'=>'hod'],
+            ['fullname'=>'Workflow HOD - Information Technology','username'=>'workflow.hod.it','email'=>'hod.it@practilink.test','role'=>'hod'],
+            ['fullname'=>'Workflow HOD - Electronics and Telecommunications','username'=>'workflow.hod.ect','email'=>'hod.ect@practilink.test','role'=>'hod'],
         ];
 
         foreach ($users as $data) {

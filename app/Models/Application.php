@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Application extends Model
 {
     protected $fillable = [
-        'student_id', 'application_window_id', 'reference_number', 'status', 'notes',
+        'student_id', 'department_id', 'application_window_id', 'reference_number', 'status', 'notes',
         'reason_for_application', 'interests', 'expected_objectives', 'current_study_year',
         'training_start_date', 'training_end_date', 'submitted_at', 'reviewed_at',
     ];
@@ -25,6 +25,7 @@ class Application extends Model
     }
 
     public function student(): BelongsTo { return $this->belongsTo(Student::class); }
+    public function department(): BelongsTo { return $this->belongsTo(Department::class); }
     public function applicationWindow(): BelongsTo { return $this->belongsTo(ApplicationWindow::class); }
     public function documents(): HasMany { return $this->hasMany(ApplicationDocument::class); }
     public function workflow(): HasOne { return $this->hasOne(ApplicationWorkflow::class); }
