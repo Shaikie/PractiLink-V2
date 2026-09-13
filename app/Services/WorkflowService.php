@@ -22,14 +22,28 @@ class WorkflowService
                 return $existing->load('currentStage', 'version');
             }
 
-            $definition = WorkflowDefinition::where('is_active', true)
-                ->where(function ($q) use ($application) {
-                    $q->where('training_type_id', $application->applicationWindow->training_type_id)
-                        ->orWhereNull('training_type_id');
-                })
+            $trainingTypeId = $application->applicationWindow?->training_type_id;
+            if (!$trainingTypeId) {
+                throw ValidationException::withMessages([
+                    'workflow' => 'The application has no training type configured.',
+                ]);
+            }
+
+            $definition = WorkflowDefinition::query()
+                ->where('is_active', true)
+                ->where('training_type_id', $trainingTypeId)
                 ->with(['versions' => fn ($q) => $q->where('status', 'PUBLISHED')->latest('version')])
                 ->get()
                 ->first(fn ($d) => $d->versions->isNotEmpty());
+
+            if (!$definition) {
+                $definition = WorkflowDefinition::query()
+                    ->where('is_active', true)
+                    ->whereNull('training_type_id')
+                    ->with(['versions' => fn ($q) => $q->where('status', 'PUBLISHED')->latest('version')])
+                    ->get()
+                    ->first(fn ($d) => $d->versions->isNotEmpty());
+            }
 
             if (!$definition) {
                 throw ValidationException::withMessages([
