@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\StudentApplicationController;
 use App\Http\Controllers\StudentApplicationDocumentController;
+use App\Http\Controllers\StudentApplicationProgressController;
 use App\Http\Controllers\StudentPlacementController;
 use App\Http\Controllers\StudentProfileController;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,7 @@ Route::prefix('student/applications')->name('student.applications.')->group(func
     Route::get('/create', [StudentApplicationController::class,'create'])->name('create');
     Route::post('/', [StudentApplicationController::class,'store'])->name('store');
     Route::get('/{application}', [StudentApplicationController::class,'show'])->name('show');
+    Route::get('/{application}/progress', [StudentApplicationProgressController::class,'show'])->name('progress');
     Route::put('/{application}', [StudentApplicationController::class,'update'])->name('update');
     Route::post('/{application}/submit', [StudentApplicationController::class,'submit'])->name('submit');
     Route::post('/{application}/cancel', [StudentApplicationController::class,'cancel'])->name('cancel');

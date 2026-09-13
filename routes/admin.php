@@ -11,10 +11,7 @@ use App\Http\Controllers\StudentApplicationDocumentController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('permission:applications.manage')->group(function () {
-    Route::resource('application-windows', AdminApplicationWindowController::class)
-        ->except(['show'])
-        ->parameters(['application-windows' => 'applicationWindow'])
-        ->names('application-windows');
+    Route::resource('application-windows', AdminApplicationWindowController::class)->except(['show'])->parameters(['application-windows' => 'applicationWindow'])->names('application-windows');
 });
 
 Route::middleware('permission:applications.view')->group(function () {
@@ -23,6 +20,7 @@ Route::middleware('permission:applications.view')->group(function () {
     Route::get('applications/{application}/documents/{document}/preview', [StudentApplicationDocumentController::class, 'preview'])->name('applications.documents.preview');
     Route::get('applications/{application}/documents/{document}/download', [StudentApplicationDocumentController::class, 'download'])->name('applications.documents.download');
     Route::post('applications/{application}/action', [AdminApplicationController::class, 'action'])->name('applications.action');
+    Route::post('applications/{application}/workflow-duties/{duty}/complete', [AdminApplicationController::class, 'completeDuty'])->name('applications.workflow-duties.complete');
 });
 
 Route::middleware('permission:workflows.manage')->prefix('workflows')->name('workflows.')->group(function () {
