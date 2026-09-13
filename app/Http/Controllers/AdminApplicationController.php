@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Notifications\ApplicationStatusUpdated;
 use App\Services\ApplicationLifecycleService;
-use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 
 class AdminApplicationController extends Controller
