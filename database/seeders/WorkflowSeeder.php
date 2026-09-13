@@ -36,34 +36,54 @@ class WorkflowSeeder extends Seeder
             $trainingTypeId = DB::table('training_types')->where('code',$trainingCode)->value('id');
             if (!$trainingTypeId) continue;
 
-            $definitionId = DB::table('workflow_definitions')->updateOrInsertGetId ?? null;
-            $definitionId = DB::table('workflow_definitions')->where('code','DEFAULT_'. $trainingCode)->value('id');
+            $definitionId = DB::table('workflow_definitions')->where('code','DEFAULT_'.$trainingCode)->value('id');
             if (!$definitionId) {
                 $definitionId = DB::table('workflow_definitions')->insertGetId([
-                    'name'=>$name,'code'=>'DEFAULT_'.$trainingCode,'training_type_id'=>$trainingTypeId,
+                    'name'=>$name,
+                    'code'=>'DEFAULT_'.$trainingCode,
+                    'training_type_id'=>$trainingTypeId,
                     'description'=>'Secretary → HR → Department HOD → CTO placement workflow.',
-                    'is_active'=>true,'created_at'=>now(),'updated_at'=>now(),
+                    'is_active'=>true,
+                    'created_at'=>now(),
+                    'updated_at'=>now(),
                 ]);
             }
 
-            $published = DB::table('workflow_versions')->where('workflow_definition_id',$definitionId)->where('status','PUBLISHED')->latest('version')->first();
+            $published = DB::table('workflow_versions')
+                ->where('workflow_definition_id',$definitionId)
+                ->where('status','PUBLISHED')
+                ->latest('version')
+                ->first();
+
             if ($published && $this->matchesPublishedWorkflow($published->id)) continue;
 
             $versionNumber = ((int) DB::table('workflow_versions')->where('workflow_definition_id',$definitionId)->max('version')) + 1;
             $versionId = DB::table('workflow_versions')->insertGetId([
-                'workflow_definition_id'=>$definitionId,'version'=>$versionNumber,'status'=>'PUBLISHED',
+                'workflow_definition_id'=>$definitionId,
+                'version'=>$versionNumber,
+                'status'=>'PUBLISHED',
                 'change_summary'=>'Secretary → HR → Department HOD → CTO placement workflow',
-                'published_at'=>now(),'created_at'=>now(),'updated_at'=>now(),
+                'published_at'=>now(),
+                'created_at'=>now(),
+                'updated_at'=>now(),
             ]);
 
             $stageIds = [];
             foreach (self::STAGES as $index => $stage) {
+                $roleId = $stage['role'] ? DB::table('roles')->where('slug',$stage['role'])->value('id') : null;
+                if ($stage['role'] && !$roleId) continue;
+
                 $stageIds[$stage['code']] = DB::table('workflow_stages')->insertGetId([
-                    'workflow_version_id'=>$versionId,'name'=>$stage['name'],'code'=>$stage['code'],'stage_order'=>$index+1,
+                    'workflow_version_id'=>$versionId,
+                    'name'=>$stage['name'],
+                    'code'=>$stage['code'],
+                    'stage_order'=>$index+1,
                     'required_permission'=>null,
-                    'responsible_role_id'=>$stage['role'] ? DB::table('roles')->where('slug',$stage['role'])->value('id') : null,
-                    'is_terminal'=>$stage['terminal'],'is_starting'=>$stage['starting'],
-                    'created_at'=>now(),'updated_at'=>now(),
+                    'responsible_role_id'=>$roleId,
+                    'is_terminal'=>$stage['terminal'],
+                    'is_starting'=>$stage['starting'],
+                    'created_at'=>now(),
+                    'updated_at'=>now(),
                 ]);
             }
 
@@ -78,12 +98,17 @@ class WorkflowSeeder extends Seeder
                 };
 
                 DB::table('workflow_transitions')->insert([
-                    'workflow_version_id'=>$versionId,'from_stage_id'=>$stageIds[$transition['from']],
-                    'to_stage_id'=>$stageIds[$transition['to']], 'action'=>$transition['action'],
-                    'label'=>$transition['label'],'result_status'=>$transition['status'],
+                    'workflow_version_id'=>$versionId,
+                    'from_stage_id'=>$stageIds[$transition['from']],
+                    'to_stage_id'=>$stageIds[$transition['to']],
+                    'action'=>$transition['action'],
+                    'label'=>$transition['label'],
+                    'result_status'=>$transition['status'],
                     'required_permission'=>$permission,
                     'responsible_role_id'=>DB::table('roles')->where('slug',$transition['role'])->value('id'),
-                    'requires_comment'=>$transition['comment'],'created_at'=>now(),'updated_at'=>now(),
+                    'requires_comment'=>$transition['comment'],
+                    'created_at'=>now(),
+                    'updated_at'=>now(),
                 ]);
             }
 
