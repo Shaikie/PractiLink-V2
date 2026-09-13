@@ -26,12 +26,20 @@ class ApplicationLifecycleService
     public const ACTION_ACCEPT = 'ACCEPT';
     public const ACTION_COMPLETE_PLACEMENT = 'COMPLETE_PLACEMENT';
 
-    private const ACTION_STATUS = [
-        self::ACTION_START_REVIEW => 'UNDER_REVIEW',
-        self::ACTION_FORWARD => 'UNDER_REVIEW',
-        self::ACTION_RETURN => 'RETURNED',
-        self::ACTION_REJECT => 'REJECTED',
-        self::ACTION_ACCEPT => 'ACCEPTED',
+    private const LIFECYCLE_ACTIONS = [
+        self::ACTION_START_REVIEW,
+        self::ACTION_FORWARD,
+        self::ACTION_RETURN,
+        self::ACTION_REJECT,
+        self::ACTION_ACCEPT,
+    ];
+
+    private const RESULT_STATUSES = [
+        'SUBMITTED',
+        'UNDER_REVIEW',
+        'RETURNED',
+        'ACCEPTED',
+        'REJECTED',
     ];
 
     public function __construct(
@@ -82,7 +90,7 @@ class ApplicationLifecycleService
             return $this->completePlacement($application, $actor, $comment);
         }
 
-        if (! array_key_exists($action, self::ACTION_STATUS)) {
+        if (! in_array($action, self::LIFECYCLE_ACTIONS, true)) {
             throw ValidationException::withMessages(['action' => 'Unsupported application lifecycle action.']);
         }
 
@@ -98,15 +106,22 @@ class ApplicationLifecycleService
                 ]);
             }
 
+            $transition = $this->workflows->findTransition($locked->workflow, $action);
+            $status = strtoupper((string) $transition->result_status);
+
+            if (! in_array($status, self::RESULT_STATUSES, true)) {
+                throw ValidationException::withMessages([
+                    'transition' => 'The workflow contains an invalid application outcome.',
+                ]);
+            }
+
             $old = $locked->only(['status', 'reviewed_at']);
             $this->workflows->transition($locked->workflow, $action, $actor, $comment);
 
-            $status = self::ACTION_STATUS[$action];
             $updates = ['status' => $status];
-
-            if (in_array($action, [self::ACTION_ACCEPT, self::ACTION_REJECT], true)) {
+            if (in_array($status, ['ACCEPTED', 'REJECTED'], true)) {
                 $updates['reviewed_at'] = now();
-            } elseif ($action === self::ACTION_RETURN) {
+            } elseif ($status === 'RETURNED') {
                 $updates['reviewed_at'] = null;
             }
 
@@ -168,6 +183,18 @@ class ApplicationLifecycleService
             if (! $locked->workflow) {
                 throw ValidationException::withMessages([
                     'workflow' => 'This application has no workflow instance.',
+                ]);
+            }
+
+            $transition = $this->workflows->findTransition(
+                $locked->workflow,
+                self::ACTION_COMPLETE_PLACEMENT,
+            );
+            $status = strtoupper((string) $transition->result_status);
+
+            if ($status !== 'ACCEPTED') {
+                throw ValidationException::withMessages([
+                    'transition' => 'The placement completion transition must preserve the accepted application outcome.',
                 ]);
             }
 
