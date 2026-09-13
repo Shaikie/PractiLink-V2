@@ -13,12 +13,16 @@ class WorkflowTransition extends Model
         'to_stage_id',
         'action',
         'label',
+        'result_status',
         'required_permission',
         'responsible_role_id',
         'requires_comment',
     ];
 
-    protected $casts = ['requires_comment' => 'boolean'];
+    protected function casts(): array
+    {
+        return ['requires_comment' => 'boolean'];
+    }
 
     public function version(): BelongsTo { return $this->belongsTo(WorkflowVersion::class, 'workflow_version_id'); }
     public function fromStage(): BelongsTo { return $this->belongsTo(WorkflowStage::class, 'from_stage_id'); }
