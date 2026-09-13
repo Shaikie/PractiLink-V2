@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Models\Placement;
 use App\Models\PlacementStatusHistory;
 use App\Models\User;
+use App\Services\WorkflowService;
 use App\Support\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,37 +24,69 @@ class AdminPlacementController extends Controller
 
     public function create(Application $application)
     {
-        abort_unless($application->status === 'ACCEPTED', 422, 'Only accepted applications can be placed.');
+        $this->authorizeCto(request()->user());
+        abort_unless($application->status === 'ACCEPTED', 422, 'Only approved applications can be placed.');
         abort_if($application->placement()->exists(), 422, 'This application already has a placement.');
-        return view('admin.placements.form', ['application'=>$application->load('student','applicationWindow.trainingType'),'organizations'=>Organization::where('is_active',true)->orderBy('name')->get(),'departments'=>Department::orderBy('name')->get(),'supervisors'=>$this->eligibleSupervisors()]);
+        abort_unless($application->workflow?->currentStage?->code === 'CTO_PLACEMENT', 422, 'This application is not currently at the CTO placement stage.');
+
+        return view('admin.placements.form', [
+            'application'=>$application->load('student','applicationWindow.trainingType','department'),
+            'organizations'=>Organization::where('is_active',true)->orderBy('name')->get(),
+            'departments'=>Department::orderBy('name')->get(),
+            'supervisors'=>$this->eligibleSupervisors(),
+        ]);
     }
 
-    public function store(Request $request, Application $application)
+    public function store(Request $request, Application $application, WorkflowService $workflows)
     {
-        abort_unless($application->status === 'ACCEPTED', 422, 'Only accepted applications can be placed.');
+        $this->authorizeCto($request->user());
+        abort_unless($application->status === 'ACCEPTED', 422, 'Only approved applications can be placed.');
         abort_if($application->placement()->exists(), 422, 'This application already has a placement.');
+        abort_unless($application->workflow?->currentStage?->code === 'CTO_PLACEMENT', 422, 'This application is not currently at the CTO placement stage.');
+
         $data=$request->validate([
             'organization_id'=>['required','exists:organizations,id'],'department_id'=>['nullable','exists:departments,id'],'supervisor_user_id'=>['nullable','exists:users,id'],
             'start_date'=>['required','date_format:Y-m-d','after_or_equal:today'],'end_date'=>['required','date_format:Y-m-d','after:start_date'],'location'=>['nullable','string','max:500'],'notes'=>['nullable','string','max:5000'],
         ]);
+
         if ($data['supervisor_user_id'] && !$this->eligibleSupervisors()->whereKey($data['supervisor_user_id'])->exists()) {
             throw ValidationException::withMessages(['supervisor_user_id'=>'The selected supervisor is not eligible for supervisor assignment.']);
         }
+
         abort_unless(Organization::whereKey($data['organization_id'])->where('is_active', true)->exists(), 422, 'The selected organization is not active.');
-        if($data['start_date'] !== optional($application->training_start_date)->format('Y-m-d') || $data['end_date'] !== optional($application->training_end_date)->format('Y-m-d')) throw ValidationException::withMessages(['start_date'=>'Placement dates must match the approved application training dates.']);
-        $placement = DB::transaction(function () use ($data, $application, $request): Placement {
+        if($data['start_date'] !== optional($application->training_start_date)->format('Y-m-d') || $data['end_date'] !== optional($application->training_end_date)->format('Y-m-d')) {
+            throw ValidationException::withMessages(['start_date'=>'Placement dates must match the approved application training dates.']);
+        }
+
+        DB::transaction(function () use ($data, $application, $request, $workflows): void {
             $application->refresh();
-            abort_unless($application->status === 'ACCEPTED' && !$application->placement()->exists(), 422, 'This application already has a placement or is no longer accepted.');
-            $placement = Placement::create($data + ['application_id'=>$application->id,'student_id'=>$application->student_id,'reference_number'=>$this->reference(),'status'=>'ALLOCATED']);
-            PlacementStatusHistory::create(['placement_id'=>$placement->id,'to_status'=>'ALLOCATED','changed_by'=>$request->user()->id,'changed_at'=>now()]);
+            abort_unless($application->status === 'ACCEPTED' && !$application->placement()->exists(), 422, 'This application already has a placement or is no longer approved.');
+            abort_unless($application->workflow?->currentStage?->code === 'CTO_PLACEMENT', 422, 'This application is no longer at the CTO placement stage.');
+
+            $placement = Placement::create($data + [
+                'application_id'=>$application->id,
+                'student_id'=>$application->student_id,
+                'reference_number'=>$this->reference(),
+                'status'=>'ALLOCATED',
+            ]);
+
+            PlacementStatusHistory::create([
+                'placement_id'=>$placement->id,
+                'to_status'=>'ALLOCATED',
+                'changed_by'=>$request->user()->id,
+                'changed_at'=>now(),
+            ]);
+
             AuditLogger::record('placement.created',$placement,null,$placement->toArray());
-            return $placement;
+            $workflows->transition($application->workflow, 'COMPLETE_PLACEMENT', $request->user());
         });
-        return redirect()->route('admin.placements.index')->with('success','Placement allocated successfully.');
+
+        return redirect()->route('admin.placements.index')->with('success','Placement allocated successfully and the application workflow is complete.');
     }
 
     public function updateStatus(Request $request, Placement $placement)
     {
+        $this->authorizeCto($request->user());
         $data=$request->validate(['status'=>['required','in:ALLOCATED,ACTIVE,COMPLETED,CANCELLED'],'comment'=>['nullable','string','max:5000']]);
         $allowedTransitions = [
             'ALLOCATED' => ['ACTIVE', 'CANCELLED'],
@@ -71,6 +104,11 @@ class AdminPlacementController extends Controller
             AuditLogger::record('placement.status_updated',$placement,['status'=>$old],['status'=>$placement->status]);
         });
         return back()->with('success','Placement status updated.');
+    }
+
+    private function authorizeCto(User $user): void
+    {
+        abort_unless($user->roles()->where('slug','cto')->exists(), 403, 'Only the CTO can manage final placement.');
     }
 
     private function eligibleSupervisors()
