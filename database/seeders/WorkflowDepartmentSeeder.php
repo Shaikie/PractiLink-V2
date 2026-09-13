@@ -17,13 +17,11 @@ class WorkflowDepartmentSeeder extends Seeder
         ];
 
         foreach ($departments as $data) {
-            $department = Department::updateOrCreate(
-                ['code' => $data['code']],
-                ['name' => $data['name']],
-            );
-
-            $hod = User::where('email', $data['hod'])->firstOrFail();
-            $department->users()->syncWithoutDetaching([$hod->id]);
+            $department = Department::updateOrCreate(['code'=>$data['code']], ['name'=>$data['name']]);
+            $hod = User::where('email',$data['hod'])->first();
+            if ($hod) {
+                $department->users()->syncWithoutDetaching([$hod->id]);
+            }
         }
     }
 }
