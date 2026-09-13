@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class WorkflowStaffSeeder extends Seeder
 {
@@ -15,21 +14,6 @@ class WorkflowStaffSeeder extends Seeder
 
         if (blank($password)) {
             throw new \RuntimeException('Set APP_WORKFLOW_TEST_PASSWORD in .env before seeding workflow staff.');
-        }
-
-        DB::table('roles')->updateOrInsert(
-            ['slug' => 'cto'],
-            ['name' => 'CTO', 'description' => 'Final placement allocation and supervisor assignment.', 'updated_at' => now(), 'created_at' => now()],
-        );
-
-        $cto = Role::where('slug','cto')->firstOrFail();
-        $ctoPermissions = DB::table('permissions')->whereIn('slug', [
-            'applications.view','applications.review','applications.return',
-            'applications.documents','applications.assign_supervisor','placements.manage',
-        ])->pluck('id');
-        DB::table('role_permissions')->where('role_id',$cto->id)->delete();
-        foreach ($ctoPermissions as $permissionId) {
-            DB::table('role_permissions')->insertOrIgnore(['role_id'=>$cto->id,'permission_id'=>$permissionId]);
         }
 
         $users = [
