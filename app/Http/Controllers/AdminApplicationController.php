@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
-use App\Models\User;
 use App\Notifications\ApplicationStatusUpdated;
 use App\Services\WorkflowService;
 use App\Support\AuditLogger;
@@ -50,7 +49,8 @@ class AdminApplicationController extends Controller
 
         $transitions = $application->workflow?->version?->transitions()
             ->where('from_stage_id', $application->workflow->current_stage_id)
-            ->with(['toStage', 'responsibleRole'])
+            ->where('action', '!=', 'COMPLETE_PLACEMENT')
+            ->with(['fromStage', 'toStage', 'responsibleRole'])
             ->get() ?? collect();
 
         return view('admin.applications.show', [
@@ -69,21 +69,10 @@ class AdminApplicationController extends Controller
         $workflow = $application->workflow ?? $workflows->startFor($application);
         $old = $application->only(['status', 'reviewed_at']);
 
-        $workflows->transition(
-            $workflow,
-            $data['action'],
-            $request->user(),
-            $data['comment'] ?? null,
-        );
+        $workflows->transition($workflow, $data['action'], $request->user(), $data['comment'] ?? null);
 
         $application->refresh();
-        AuditLogger::record(
-            'application.workflow_action',
-            $application,
-            $old,
-            $application->only(['status', 'reviewed_at']),
-        );
-
+        AuditLogger::record('application.workflow_action', $application, $old, $application->only(['status', 'reviewed_at']));
         $application->student->notify(new ApplicationStatusUpdated($application));
 
         return back()->with('success', 'Workflow action completed successfully.');
