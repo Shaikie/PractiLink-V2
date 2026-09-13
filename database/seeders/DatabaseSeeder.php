@@ -16,7 +16,10 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             AdminUserSeeder::class,
             WorkflowSeeder::class,
-            WorkflowTestUserSeeder::class,
         ]);
+
+        if (config('app.workflow_test_password')) {
+            $this->call(WorkflowTestUserSeeder::class);
+        }
     }
 }
