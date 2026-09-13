@@ -5,10 +5,10 @@ namespace App\Services;
 use App\Models\Application;
 use App\Models\ApplicationWorkflow;
 use App\Models\ApplicationWorkflowHistory;
+use App\Models\User;
 use App\Models\WorkflowDefinition;
 use App\Models\WorkflowTransition;
 use App\Models\WorkflowVersion;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -67,7 +67,7 @@ class WorkflowService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $workflow->load('application.placement', 'currentStage', 'version');
+            $workflow->load('application.department', 'application.placement', 'currentStage', 'version');
 
             $transition = WorkflowTransition::where('workflow_version_id', $workflow->workflow_version_id)
                 ->where('from_stage_id', $workflow->current_stage_id)
@@ -87,21 +87,7 @@ class WorkflowService
                 throw ValidationException::withMessages(['transition' => 'A placement must be allocated before the placement stage can be completed.']);
             }
 
-            if ($workflow->currentStage?->responsible_role_id && (!$actor || !$actor->roles()->whereKey($workflow->currentStage->responsible_role_id)->exists())) {
-                abort(403, 'You do not have the role assigned to this workflow stage.');
-            }
-
-            if ($workflow->currentStage?->required_permission && (!$actor || !$actor->hasPermission($workflow->currentStage->required_permission))) {
-                abort(403, 'You do not have permission to act on this workflow stage.');
-            }
-
-            if ($transition->responsible_role_id && (!$actor || !$actor->roles()->whereKey($transition->responsible_role_id)->exists())) {
-                abort(403, 'You do not have the role assigned to this workflow action.');
-            }
-
-            if ($transition->required_permission && (!$actor || !$actor->hasPermission($transition->required_permission))) {
-                abort(403, 'You do not have permission to perform this workflow action.');
-            }
+            $this->authorizeActor($workflow, $transition, $actor);
 
             $from = $workflow->current_stage_id;
             $workflow->update([
@@ -133,6 +119,37 @@ class WorkflowService
 
             return $workflow->fresh()->load('currentStage', 'version', 'history');
         });
+    }
+
+    private function authorizeActor(ApplicationWorkflow $workflow, WorkflowTransition $transition, ?User $actor): void
+    {
+        if (!$actor) abort(403, 'An authenticated staff account is required.');
+
+        if ($workflow->currentStage?->responsible_role_id && !$actor->roles()->whereKey($workflow->currentStage->responsible_role_id)->exists()) {
+            abort(403, 'You do not have the role assigned to this workflow stage.');
+        }
+
+        if ($workflow->currentStage?->required_permission && !$actor->hasPermission($workflow->currentStage->required_permission)) {
+            abort(403, 'You do not have permission to act on this workflow stage.');
+        }
+
+        if ($transition->responsible_role_id && !$actor->roles()->whereKey($transition->responsible_role_id)->exists()) {
+            abort(403, 'You do not have the role assigned to this workflow action.');
+        }
+
+        if ($transition->required_permission && !$actor->hasPermission($transition->required_permission)) {
+            abort(403, 'You do not have permission to perform this workflow action.');
+        }
+
+        if ($transition->responsibleRole?->slug === 'hod') {
+            if (!$workflow->application?->department_id) {
+                throw ValidationException::withMessages(['workflow' => 'This application has no department assigned for HOD routing.']);
+            }
+
+            if (!$actor->departments()->whereKey($workflow->application->department_id)->exists()) {
+                abort(403, 'This application is routed to a different department HOD.');
+            }
+        }
     }
 
     public function createVersion(WorkflowDefinition $definition, ?User $actor, ?string $summary = null): WorkflowVersion
