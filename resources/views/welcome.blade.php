@@ -17,13 +17,13 @@
     <link rel="stylesheet" href="{{ asset('css/practilink.css') }}">
     <link rel="stylesheet" href="{{ asset('css/skeuomorphism.css') }}">
     <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "PractiLink",
-        "applicationCategory": "EducationApplication",
-        "description": "Platform for managing practical training applications, documents and placement progress."
-    }
+    {!! json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'WebApplication',
+        'name' => 'PractiLink',
+        'applicationCategory' => 'EducationApplication',
+        'description' => 'Platform for managing practical training applications, documents and placement progress.',
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
 </head>
 <body class="pl-auth-page">
