@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\User;
 use App\Notifications\ApplicationStatusUpdated;
 use App\Services\WorkflowService;
 use App\Support\AuditLogger;
@@ -10,14 +11,27 @@ use Illuminate\Http\Request;
 
 class AdminApplicationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('admin.applications.index', [
-            'applications' => Application::with(['student', 'applicationWindow.trainingType', 'workflow.currentStage'])
-                ->whereIn('status', ['SUBMITTED', 'UNDER_REVIEW', 'RETURNED', 'ACCEPTED', 'REJECTED'])
-                ->latest('submitted_at')
-                ->get(),
-        ]);
+        $user = $request->user();
+        $roleIds = $user->roles()->pluck('roles.id');
+
+        $query = Application::with(['student', 'department', 'applicationWindow.trainingType', 'workflow.currentStage'])
+            ->whereIn('status', ['SUBMITTED', 'UNDER_REVIEW', 'RETURNED', 'ACCEPTED', 'REJECTED'])
+            ->latest('submitted_at');
+
+        if (!$user->roles()->where('slug','administrator')->exists()) {
+            $query->where(function ($q) use ($roleIds) {
+                $q->whereHas('workflow.currentStage', fn ($stage) => $stage->whereIn('responsible_role_id', $roleIds))
+                    ->orWhereHas('workflow.currentStage.transitions', fn ($transition) => $transition->whereIn('responsible_role_id', $roleIds));
+            });
+
+            if ($user->roles()->where('slug','hod')->exists()) {
+                $query->whereIn('department_id', $user->departments()->pluck('departments.id'));
+            }
+        }
+
+        return view('admin.applications.index', ['applications' => $query->get()]);
     }
 
     public function show(Application $application)
@@ -26,6 +40,7 @@ class AdminApplicationController extends Controller
             'student.institution',
             'student.course',
             'student.studyLevel',
+            'department',
             'applicationWindow.trainingType',
             'documents.documentType',
             'workflow.currentStage',
