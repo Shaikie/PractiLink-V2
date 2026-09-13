@@ -120,9 +120,82 @@ class WorkflowSeeder extends Seeder
 
     private function matchesPublishedWorkflow(int $versionId): bool
     {
-        $stageCodes = DB::table('workflow_stages')->where('workflow_version_id',$versionId)->orderBy('stage_order')->pluck('code')->all();
-        return $stageCodes === array_column(self::STAGES,'code')
-            && DB::table('workflow_transitions')->where('workflow_version_id',$versionId)->count() === count(self::TRANSITIONS)
-            && DB::table('workflow_transitions')->where('workflow_version_id',$versionId)->where('action','START_REVIEW')->exists();
+        $stages = DB::table('workflow_stages as stages')
+            ->leftJoin('roles', 'roles.id', '=', 'stages.responsible_role_id')
+            ->where('stages.workflow_version_id', $versionId)
+            ->orderBy('stages.stage_order')
+            ->get([
+                'stages.name',
+                'stages.code',
+                'stages.is_terminal',
+                'stages.is_starting',
+                'roles.slug as role',
+            ]);
+
+        $expectedStages = collect(self::STAGES)->map(fn (array $stage) => [
+            'name' => $stage['name'],
+            'code' => $stage['code'],
+            'is_terminal' => (int) $stage['terminal'],
+            'is_starting' => (int) $stage['starting'],
+            'role' => $stage['role'],
+        ])->values()->all();
+
+        if ($stages->map(fn ($stage) => [
+            'name' => $stage->name,
+            'code' => $stage->code,
+            'is_terminal' => (int) $stage->is_terminal,
+            'is_starting' => (int) $stage->is_starting,
+            'role' => $stage->role,
+        ])->values()->all() !== $expectedStages) {
+            return false;
+        }
+
+        $actualTransitions = DB::table('workflow_transitions as transitions')
+            ->join('workflow_stages as from_stage', 'from_stage.id', '=', 'transitions.from_stage_id')
+            ->join('workflow_stages as to_stage', 'to_stage.id', '=', 'transitions.to_stage_id')
+            ->leftJoin('roles', 'roles.id', '=', 'transitions.responsible_role_id')
+            ->where('transitions.workflow_version_id', $versionId)
+            ->orderBy('transitions.id')
+            ->get([
+                'from_stage.code as from_code',
+                'to_stage.code as to_code',
+                'transitions.action',
+                'transitions.label',
+                'transitions.result_status',
+                'transitions.requires_comment',
+                'transitions.required_permission',
+                'roles.slug as role',
+            ]);
+
+        $expectedTransitions = collect(self::TRANSITIONS)->map(fn (array $transition) => [
+            'from_code' => $transition['from'],
+            'to_code' => $transition['to'],
+            'action' => $transition['action'],
+            'label' => $transition['label'],
+            'result_status' => $transition['status'],
+            'requires_comment' => (int) $transition['comment'],
+            'required_permission' => match ($transition['action']) {
+                'START_REVIEW' => 'applications.review',
+                'FORWARD' => 'applications.forward',
+                'RETURN' => 'applications.return',
+                'REJECT' => 'applications.reject',
+                'ACCEPT' => 'applications.accept',
+                'COMPLETE_PLACEMENT' => 'placements.manage',
+            },
+            'role' => $transition['role'],
+        ])->sortBy(fn (array $transition) => implode('|', $transition))->values()->all();
+
+        $actual = $actualTransitions->map(fn ($transition) => [
+            'from_code' => $transition->from_code,
+            'to_code' => $transition->to_code,
+            'action' => $transition->action,
+            'label' => $transition->label,
+            'result_status' => $transition->result_status,
+            'requires_comment' => (int) $transition->requires_comment,
+            'required_permission' => $transition->required_permission,
+            'role' => $transition->role,
+        ])->sortBy(fn (array $transition) => implode('|', $transition))->values()->all();
+
+        return $actual === $expectedTransitions;
     }
 }
