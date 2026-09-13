@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Application;
+use App\Models\DocumentType;
 use App\Models\User;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
@@ -40,13 +41,17 @@ class ApplicationLifecycleService
     public function submit(Application $application): Application
     {
         return DB::transaction(function () use ($application): Application {
-            $locked = Application::query()->lockForUpdate()->findOrFail($application->id);
+            $locked = Application::query()
+                ->lockForUpdate()
+                ->findOrFail($application->id);
 
             if (! $locked->isEditable()) {
                 throw ValidationException::withMessages([
                     'application' => 'This application cannot be submitted in its current state.',
                 ]);
             }
+
+            $this->assertReadyForSubmission($locked);
 
             $old = $locked->only(['status', 'submitted_at', 'reviewed_at']);
             $locked->update([
@@ -82,7 +87,10 @@ class ApplicationLifecycleService
         }
 
         return DB::transaction(function () use ($application, $actor, $action, $comment): Application {
-            $locked = Application::query()->lockForUpdate()->with('workflow')->findOrFail($application->id);
+            $locked = Application::query()
+                ->lockForUpdate()
+                ->with('workflow')
+                ->findOrFail($application->id);
 
             if (! $locked->workflow) {
                 throw ValidationException::withMessages([
@@ -140,7 +148,10 @@ class ApplicationLifecycleService
     private function completePlacement(Application $application, User $actor, ?string $comment = null): Application
     {
         return DB::transaction(function () use ($application, $actor, $comment): Application {
-            $locked = Application::query()->lockForUpdate()->with(['workflow', 'placement'])->findOrFail($application->id);
+            $locked = Application::query()
+                ->lockForUpdate()
+                ->with(['workflow', 'placement'])
+                ->findOrFail($application->id);
 
             if ($locked->status !== 'ACCEPTED') {
                 throw ValidationException::withMessages([
@@ -169,5 +180,70 @@ class ApplicationLifecycleService
 
             return $locked->fresh();
         });
+    }
+
+    private function assertReadyForSubmission(Application $application): void
+    {
+        if (! $application->department_id) {
+            throw ValidationException::withMessages([
+                'department_id' => 'Please select the department that should review this application.',
+            ]);
+        }
+
+        if (! $application->applicationWindow?->isOpen()) {
+            throw ValidationException::withMessages([
+                'application_window_id' => 'The application window is no longer open.',
+            ]);
+        }
+
+        $requiredFields = [
+            'reason_for_application',
+            'interests',
+            'expected_objectives',
+            'current_study_year',
+            'training_start_date',
+            'training_end_date',
+        ];
+
+        $missing = [];
+        foreach ($requiredFields as $field) {
+            if (blank($application->{$field})) {
+                $missing[$field] = 'This field is required before submission.';
+            }
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages($missing);
+        }
+
+        if ($application->current_study_year < 1 || $application->current_study_year > 20) {
+            throw ValidationException::withMessages([
+                'current_study_year' => 'Current study year is invalid.',
+            ]);
+        }
+
+        if ($application->training_start_date->isPast() && !$application->training_start_date->isToday()) {
+            throw ValidationException::withMessages([
+                'training_start_date' => 'Training start date cannot be in the past.',
+            ]);
+        }
+
+        if (!$application->training_end_date->isAfter($application->training_start_date)) {
+            throw ValidationException::withMessages([
+                'training_end_date' => 'Training end date must be after the start date.',
+            ]);
+        }
+
+        $required = DocumentType::query()
+            ->where('is_active', true)
+            ->where('is_required', true)
+            ->pluck('id');
+        $uploaded = $application->documents()->pluck('document_type_id');
+
+        if ($required->diff($uploaded)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'documents' => 'Please upload all required documents before submitting your application.',
+            ]);
+        }
     }
 }
