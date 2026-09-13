@@ -56,12 +56,7 @@ class WorkflowService
             ]);
 
             $this->seedDuties($workflow, $stage);
-
-            ApplicationWorkflowHistory::create([
-                'application_workflow_id' => $workflow->id,
-                'to_stage_id' => $stage->id,
-                'acted_at' => now(),
-            ]);
+            ApplicationWorkflowHistory::create(['application_workflow_id'=>$workflow->id,'to_stage_id'=>$stage->id,'acted_at'=>now()]);
 
             return $workflow->fresh()->load('currentStage.duties', 'assignedUser', 'version');
         });
@@ -73,23 +68,22 @@ class WorkflowService
             $workflow = ApplicationWorkflow::query()->whereKey($workflow->id)->lockForUpdate()->firstOrFail();
             $workflow->load('application.department', 'application.placement', 'currentStage.duties', 'currentStage.responsibleRole', 'assignedUser', 'version');
 
-            if ($workflow->completed_at) {
-                throw ValidationException::withMessages(['workflow' => 'This workflow has already been completed.']);
-            }
-
+            if ($workflow->completed_at) throw ValidationException::withMessages(['workflow'=>'This workflow has already been completed.']);
             $transition = $this->findTransition($workflow, $action);
-            if ($transition->requires_comment && blank($comment)) {
-                throw ValidationException::withMessages(['comment' => 'A comment is required for this workflow action.']);
-            }
+            if ($transition->requires_comment && blank($comment)) throw ValidationException::withMessages(['comment'=>'A comment is required for this workflow action.']);
 
             $this->authorizeActor($workflow, $transition, $actor);
 
-            if (in_array($transition->action, ['FORWARD', 'ACCEPT', 'COMPLETE_PLACEMENT'], true)) {
+            if ($transition->action === 'COMPLETE_PLACEMENT' && $workflow->application?->placement) {
+                $this->completePlacementDuties($workflow, $actor);
+            }
+
+            if (in_array($transition->action, ['FORWARD','ACCEPT','COMPLETE_PLACEMENT'], true)) {
                 $this->assertRequiredDutiesComplete($workflow);
             }
 
             if ($transition->action === 'COMPLETE_PLACEMENT' && !$workflow->application?->placement) {
-                throw ValidationException::withMessages(['transition' => 'A placement with a supervisor must be allocated before completing the final stage.']);
+                throw ValidationException::withMessages(['transition'=>'A placement with a supervisor must be allocated before completing the final stage.']);
             }
 
             $from = $workflow->current_stage_id;
@@ -101,160 +95,95 @@ class WorkflowService
             ]);
 
             ApplicationWorkflowHistory::create([
-                'application_workflow_id' => $workflow->id,
-                'from_stage_id' => $from,
-                'to_stage_id' => $transition->to_stage_id,
-                'transition_id' => $transition->id,
-                'acted_by' => $actor?->id,
-                'comment' => $comment,
-                'acted_at' => now(),
+                'application_workflow_id'=>$workflow->id,
+                'from_stage_id'=>$from,
+                'to_stage_id'=>$transition->to_stage_id,
+                'transition_id'=>$transition->id,
+                'acted_by'=>$actor?->id,
+                'comment'=>$comment,
+                'acted_at'=>now(),
             ]);
 
-            if (!$workflow->completed_at) {
-                $this->resetDutiesForStage($workflow, $transition->toStage);
-            }
-
-            return $workflow->fresh()->load('currentStage.duties', 'assignedUser', 'version', 'history.toStage');
+            if (!$workflow->completed_at) $this->resetDutiesForStage($workflow, $transition->toStage);
+            return $workflow->fresh()->load('currentStage.duties','assignedUser','version','history.toStage');
         });
     }
 
     public function completeDuty(ApplicationWorkflowDuty $duty, User $actor): ApplicationWorkflowDuty
     {
         return DB::transaction(function () use ($duty, $actor) {
-            $duty->load('workflow.currentStage', 'workflow.application.department', 'stage');
-            $workflow = $duty->workflow;
-
-            if ($workflow->completed_at || $workflow->current_stage_id !== $duty->workflow_stage_id) {
-                throw ValidationException::withMessages(['duty' => 'This duty is not active for the current workflow stage.']);
-            }
-
-            $this->authorizeStageActor($workflow, $actor);
-            $duty->update(['completed_by' => $actor->id, 'completed_at' => now()]);
-
+            $duty->load('workflow.currentStage','workflow.application.department','stage');
+            $workflow=$duty->workflow;
+            if ($workflow->completed_at || $workflow->current_stage_id !== $duty->workflow_stage_id) throw ValidationException::withMessages(['duty'=>'This duty is not active for the current workflow stage.']);
+            $this->authorizeStageActor($workflow,$actor);
+            $duty->update(['completed_by'=>$actor->id,'completed_at'=>now()]);
             return $duty->fresh();
         });
     }
 
     public function findTransition(ApplicationWorkflow $workflow, string $action): WorkflowTransition
     {
-        $transition = WorkflowTransition::query()
-            ->where('workflow_version_id', $workflow->workflow_version_id)
-            ->where('from_stage_id', $workflow->current_stage_id)
-            ->where('action', strtoupper($action))
-            ->with(['responsibleRole', 'toStage'])
-            ->first();
-
-        if (!$transition) {
-            throw ValidationException::withMessages(['transition' => 'This action is not configured for the current workflow stage.']);
-        }
-
+        $transition=WorkflowTransition::query()->where('workflow_version_id',$workflow->workflow_version_id)->where('from_stage_id',$workflow->current_stage_id)->where('action',strtoupper($action))->with(['responsibleRole','toStage'])->first();
+        if (!$transition) throw ValidationException::withMessages(['transition'=>'This action is not configured for the current workflow stage.']);
         return $transition;
     }
 
     public function createVersion(WorkflowDefinition $definition, ?User $actor, ?string $summary = null): WorkflowVersion
     {
-        $next = ((int) $definition->versions()->max('version')) + 1;
-        return $definition->versions()->create([
-            'version' => $next,
-            'status' => 'DRAFT',
-            'change_summary' => $summary,
-            'created_by' => $actor?->id,
-        ]);
+        $next=((int)$definition->versions()->max('version'))+1;
+        return $definition->versions()->create(['version'=>$next,'status'=>'DRAFT','change_summary'=>$summary,'created_by'=>$actor?->id]);
     }
 
     private function authorizeActor(ApplicationWorkflow $workflow, WorkflowTransition $transition, ?User $actor): void
     {
-        $this->authorizeStageActor($workflow, $actor);
-
-        if ($transition->responsible_role_id && !$actor->roles()->whereKey($transition->responsible_role_id)->exists()) {
-            abort(403, 'You do not have the role assigned to this workflow action.');
-        }
-
-        if ($transition->required_permission && !$actor->hasPermission($transition->required_permission)) {
-            abort(403, 'You do not have permission to perform this workflow action.');
-        }
+        $this->authorizeStageActor($workflow,$actor);
+        if ($transition->responsible_role_id && !$actor->roles()->whereKey($transition->responsible_role_id)->exists()) abort(403,'You do not have the role assigned to this workflow action.');
+        if ($transition->required_permission && !$actor->hasPermission($transition->required_permission)) abort(403,'You do not have permission to perform this workflow action.');
     }
 
     private function authorizeStageActor(ApplicationWorkflow $workflow, ?User $actor): void
     {
-        if (!$actor || !$actor->is_active) {
-            abort(403, 'An active staff account is required.');
+        if (!$actor || !$actor->is_active) abort(403,'An active staff account is required.');
+        $stage=$workflow->currentStage;
+        if ($workflow->assigned_user_id) { abort_unless((int)$workflow->assigned_user_id === (int)$actor->id,403,'This application is assigned to another staff member.'); return; }
+        if ($stage->responsible_role_id && !$actor->roles()->whereKey($stage->responsible_role_id)->exists()) abort(403,'You do not have the role assigned to this workflow stage.');
+        if ($stage->assignment_mode===self::ASSIGN_DEPARTMENT_ROLE) {
+            $departmentId=$workflow->application?->department_id;
+            if (!$departmentId || !$actor->departments()->whereKey($departmentId)->exists()) abort(403,'This application is routed to a different department.');
         }
-
-        $stage = $workflow->currentStage;
-        if ($workflow->assigned_user_id) {
-            abort_unless((int) $workflow->assigned_user_id === (int) $actor->id, 403, 'This application is assigned to another staff member.');
-            return;
-        }
-
-        if ($stage->responsible_role_id && !$actor->roles()->whereKey($stage->responsible_role_id)->exists()) {
-            abort(403, 'You do not have the role assigned to this workflow stage.');
-        }
-
-        if ($stage->assignment_mode === self::ASSIGN_DEPARTMENT_ROLE) {
-            $departmentId = $workflow->application?->department_id;
-            if (!$departmentId || !$actor->departments()->whereKey($departmentId)->exists()) {
-                abort(403, 'This application is routed to a different department.');
-            }
-        }
-
-        if ($stage->required_permission && !$actor->hasPermission($stage->required_permission)) {
-            abort(403, 'You do not have permission to work on this stage.');
-        }
+        if ($stage->required_permission && !$actor->hasPermission($stage->required_permission)) abort(403,'You do not have permission to work on this stage.');
     }
 
     private function assertRequiredDutiesComplete(ApplicationWorkflow $workflow): void
     {
-        $required = $workflow->currentStage->duties->where('is_required', true);
+        $required=$workflow->currentStage->duties->where('is_required',true);
         if ($required->isEmpty()) return;
+        $completed=ApplicationWorkflowDuty::query()->where('application_workflow_id',$workflow->id)->where('workflow_stage_id',$workflow->current_stage_id)->whereNotNull('completed_at')->whereIn('workflow_stage_duty_id',$required->pluck('id'))->count();
+        if ($completed !== $required->count()) throw ValidationException::withMessages(['duties'=>'Complete every required duty before forwarding or completing this stage.']);
+    }
 
-        $completed = ApplicationWorkflowDuty::query()
-            ->where('application_workflow_id', $workflow->id)
-            ->where('workflow_stage_id', $workflow->current_stage_id)
-            ->whereNotNull('completed_at')
-            ->whereIn('workflow_stage_duty_id', $required->pluck('id'))
-            ->count();
-
-        if ($completed !== $required->count()) {
-            throw ValidationException::withMessages(['duties' => 'Complete every required duty before forwarding or completing this stage.']);
-        }
+    private function completePlacementDuties(ApplicationWorkflow $workflow, User $actor): void
+    {
+        ApplicationWorkflowDuty::query()->where('application_workflow_id',$workflow->id)->where('workflow_stage_id',$workflow->current_stage_id)->whereNull('completed_at')->update(['completed_by'=>$actor->id,'completed_at'=>now()]);
     }
 
     private function resolveAssignee(WorkflowStage $stage, Application $application): ?int
     {
-        if ($stage->assigned_user_id && $stage->assignedUser?->is_active) {
-            return $stage->assigned_user_id;
-        }
-
-        $query = User::query()->where('is_active', true);
-        if ($stage->responsible_role_id) {
-            $query->whereHas('roles', fn ($q) => $q->whereKey($stage->responsible_role_id));
-        }
-
-        if ($stage->assignment_mode === self::ASSIGN_DEPARTMENT_ROLE) {
-            $query->whereHas('departments', fn ($q) => $q->whereKey($application->department_id));
-        }
-
+        if ($stage->assigned_user_id && $stage->assignedUser?->is_active) return $stage->assigned_user_id;
+        $query=User::query()->where('is_active',true);
+        if ($stage->responsible_role_id) $query->whereHas('roles',fn($q)=>$q->whereKey($stage->responsible_role_id));
+        if ($stage->assignment_mode===self::ASSIGN_DEPARTMENT_ROLE) $query->whereHas('departments',fn($q)=>$q->whereKey($application->department_id));
         return $query->orderBy('id')->value('id');
     }
 
     private function seedDuties(ApplicationWorkflow $workflow, WorkflowStage $stage): void
     {
-        foreach ($stage->duties as $duty) {
-            ApplicationWorkflowDuty::firstOrCreate([
-                'application_workflow_id' => $workflow->id,
-                'workflow_stage_duty_id' => $duty->id,
-            ], [
-                'workflow_stage_id' => $stage->id,
-            ]);
-        }
+        foreach ($stage->duties as $duty) ApplicationWorkflowDuty::firstOrCreate(['application_workflow_id'=>$workflow->id,'workflow_stage_duty_id'=>$duty->id],['workflow_stage_id'=>$stage->id]);
     }
 
     private function resetDutiesForStage(ApplicationWorkflow $workflow, WorkflowStage $stage): void
     {
-        ApplicationWorkflowDuty::where('application_workflow_id', $workflow->id)
-            ->where('workflow_stage_id', $stage->id)
-            ->delete();
-        $this->seedDuties($workflow, $stage);
+        ApplicationWorkflowDuty::where('application_workflow_id',$workflow->id)->where('workflow_stage_id',$stage->id)->delete();
+        $this->seedDuties($workflow,$stage);
     }
 }
