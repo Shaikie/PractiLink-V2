@@ -14,10 +14,15 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ReferenceDataSeeder::class,
             RolePermissionSeeder::class,
-            WorkflowStaffSeeder::class,
+            WorkflowRoleSeeder::class,
             WorkflowDepartmentSeeder::class,
             AdminUserSeeder::class,
             WorkflowSeeder::class,
         ]);
+
+        if (config('app.workflow_test_password')) {
+            $this->call(WorkflowStaffSeeder::class);
+            $this->call(WorkflowDepartmentSeeder::class);
+        }
     }
 }
