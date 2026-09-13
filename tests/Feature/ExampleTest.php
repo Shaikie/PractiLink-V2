@@ -6,9 +6,11 @@ use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
-    public function test_guest_root_redirects_to_login(): void
+    public function test_guest_can_view_public_landing_page(): void
     {
-        $response=$this->get('/');
-        $response->assertRedirect('/login');
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertViewIs('welcome');
     }
 }

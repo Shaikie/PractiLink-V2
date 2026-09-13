@@ -1,2 +1,8 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /dashboard
+Disallow: /student/
+Disallow: /admin/
+Disallow: /notifications
+Disallow: /profile
+Sitemap: https://practilinkv2.co.tz/sitemap.xml
