@@ -14,45 +14,135 @@ use Illuminate\Validation\ValidationException;
 
 class WorkflowService
 {
+    public const RESULT_STATUSES = ['SUBMITTED', 'UNDER_REVIEW', 'RETURNED', 'ACCEPTED', 'REJECTED'];
+
     public function startFor(Application $application): ApplicationWorkflow
     {
         return DB::transaction(function () use ($application) {
             $existing = $application->workflow;
             if ($existing) return $existing->load('currentStage', 'version');
-            $definition = WorkflowDefinition::where('is_active', true)->where(function ($q) use ($application) {
-                $q->where('training_type_id', $application->applicationWindow->training_type_id)->orWhereNull('training_type_id');
-            })->with(['versions'=>fn($q)=>$q->where('status','PUBLISHED')->latest('version')])->get()->first(fn($d)=>$d->versions->isNotEmpty());
-            if (!$definition) throw ValidationException::withMessages(['workflow'=>'No published workflow is configured for this training type.']);
-            $version=$definition->versions->first(); $stage=$version->stages()->where('is_starting', true)->first() ?? $version->stages()->orderBy('stage_order')->first();
-            if (!$stage) throw ValidationException::withMessages(['workflow'=>'The published workflow has no stages.']);
-            $workflow=ApplicationWorkflow::create(['application_id'=>$application->id,'workflow_version_id'=>$version->id,'current_stage_id'=>$stage->id]);
-            ApplicationWorkflowHistory::create(['application_workflow_id'=>$workflow->id,'to_stage_id'=>$stage->id,'acted_at'=>now()]);
-            return $workflow->load('currentStage','version');
+
+            $definition = WorkflowDefinition::where('is_active', true)
+                ->where(function ($q) use ($application) {
+                    $q->where('training_type_id', $application->applicationWindow->training_type_id)
+                        ->orWhereNull('training_type_id');
+                })
+                ->with(['versions' => fn ($q) => $q->where('status', 'PUBLISHED')->latest('version')])
+                ->get()
+                ->first(fn ($d) => $d->versions->isNotEmpty());
+
+            if (!$definition) {
+                throw ValidationException::withMessages(['workflow' => 'No published workflow is configured for this training type.']);
+            }
+
+            $version = $definition->versions->first();
+            $stage = $version->stages()->where('is_starting', true)->first()
+                ?? $version->stages()->orderBy('stage_order')->first();
+
+            if (!$stage) {
+                throw ValidationException::withMessages(['workflow' => 'The published workflow has no stages.']);
+            }
+
+            $workflow = ApplicationWorkflow::create([
+                'application_id' => $application->id,
+                'workflow_version_id' => $version->id,
+                'current_stage_id' => $stage->id,
+            ]);
+
+            ApplicationWorkflowHistory::create([
+                'application_workflow_id' => $workflow->id,
+                'to_stage_id' => $stage->id,
+                'acted_at' => now(),
+            ]);
+
+            return $workflow->load('currentStage', 'version');
         });
     }
 
-    public function transition(ApplicationWorkflow $workflow, string $action, ?User $actor, ?string $comment=null): ApplicationWorkflow
+    public function transition(ApplicationWorkflow $workflow, string $action, ?User $actor, ?string $comment = null): ApplicationWorkflow
     {
-        return DB::transaction(function () use ($workflow,$action,$actor,$comment) {
-            $workflow = ApplicationWorkflow::query()->whereKey($workflow->id)->lockForUpdate()->firstOrFail();
-            $workflow->load('currentStage','version');
-            $transition=WorkflowTransition::where('workflow_version_id',$workflow->workflow_version_id)->where('from_stage_id',$workflow->current_stage_id)->where('action',strtoupper($action))->with('responsibleRole')->first();
-            if (!$transition) throw ValidationException::withMessages(['transition'=>'This action is not configured for the current workflow stage.']);
-            if ($transition->requires_comment && blank($comment)) throw ValidationException::withMessages(['comment'=>'A comment is required for this workflow action.']);
-            if ($workflow->currentStage?->responsible_role_id && (!$actor || !$actor->roles()->whereKey($workflow->currentStage->responsible_role_id)->exists())) abort(403,'You do not have the role assigned to this workflow stage.');
-            if ($workflow->currentStage?->required_permission && (!$actor || !$actor->hasPermission($workflow->currentStage->required_permission))) abort(403,'You do not have permission to act on this workflow stage.');
-            if ($transition->responsible_role_id && (!$actor || !$actor->roles()->whereKey($transition->responsible_role_id)->exists())) abort(403,'You do not have the role assigned to this workflow action.');
-            if ($transition->required_permission && (!$actor || !$actor->hasPermission($transition->required_permission))) abort(403,'You do not have permission to perform this workflow action.');
-            $from=$workflow->current_stage_id;
-            $workflow->update(['current_stage_id'=>$transition->to_stage_id,'completed_at'=>$transition->toStage()->value('is_terminal')?now():null]);
-            ApplicationWorkflowHistory::create(['application_workflow_id'=>$workflow->id,'from_stage_id'=>$from,'to_stage_id'=>$transition->to_stage_id,'transition_id'=>$transition->id,'acted_by'=>$actor?->id,'comment'=>$comment,'acted_at'=>now()]);
-            return $workflow->fresh()->load('currentStage','version','history');
+        return DB::transaction(function () use ($workflow, $action, $actor, $comment) {
+            $workflow = ApplicationWorkflow::query()
+                ->whereKey($workflow->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $workflow->load('application.placement', 'currentStage', 'version');
+
+            $transition = WorkflowTransition::where('workflow_version_id', $workflow->workflow_version_id)
+                ->where('from_stage_id', $workflow->current_stage_id)
+                ->where('action', strtoupper($action))
+                ->with(['responsibleRole', 'toStage'])
+                ->first();
+
+            if (!$transition) {
+                throw ValidationException::withMessages(['transition' => 'This action is not configured for the current workflow stage.']);
+            }
+
+            if ($transition->requires_comment && blank($comment)) {
+                throw ValidationException::withMessages(['comment' => 'A comment is required for this workflow action.']);
+            }
+
+            if ($transition->action === 'COMPLETE_PLACEMENT' && !$workflow->application?->placement) {
+                throw ValidationException::withMessages(['transition' => 'A placement must be allocated before the placement stage can be completed.']);
+            }
+
+            if ($workflow->currentStage?->responsible_role_id && (!$actor || !$actor->roles()->whereKey($workflow->currentStage->responsible_role_id)->exists())) {
+                abort(403, 'You do not have the role assigned to this workflow stage.');
+            }
+
+            if ($workflow->currentStage?->required_permission && (!$actor || !$actor->hasPermission($workflow->currentStage->required_permission))) {
+                abort(403, 'You do not have permission to act on this workflow stage.');
+            }
+
+            if ($transition->responsible_role_id && (!$actor || !$actor->roles()->whereKey($transition->responsible_role_id)->exists())) {
+                abort(403, 'You do not have the role assigned to this workflow action.');
+            }
+
+            if ($transition->required_permission && (!$actor || !$actor->hasPermission($transition->required_permission))) {
+                abort(403, 'You do not have permission to perform this workflow action.');
+            }
+
+            $from = $workflow->current_stage_id;
+            $workflow->update([
+                'current_stage_id' => $transition->to_stage_id,
+                'completed_at' => $transition->toStage->is_terminal ? now() : null,
+            ]);
+
+            if ($transition->result_status) {
+                $status = strtoupper($transition->result_status);
+                if (!in_array($status, self::RESULT_STATUSES, true)) {
+                    throw ValidationException::withMessages(['transition' => 'The workflow contains an invalid application outcome.']);
+                }
+
+                $workflow->application->update([
+                    'status' => $status,
+                    'reviewed_at' => in_array($status, ['ACCEPTED', 'REJECTED'], true) ? now() : null,
+                ]);
+            }
+
+            ApplicationWorkflowHistory::create([
+                'application_workflow_id' => $workflow->id,
+                'from_stage_id' => $from,
+                'to_stage_id' => $transition->to_stage_id,
+                'transition_id' => $transition->id,
+                'acted_by' => $actor?->id,
+                'comment' => $comment,
+                'acted_at' => now(),
+            ]);
+
+            return $workflow->fresh()->load('currentStage', 'version', 'history');
         });
     }
 
-    public function createVersion(WorkflowDefinition $definition, ?User $actor, ?string $summary=null): WorkflowVersion
+    public function createVersion(WorkflowDefinition $definition, ?User $actor, ?string $summary = null): WorkflowVersion
     {
-        $next=((int)$definition->versions()->max('version'))+1;
-        return $definition->versions()->create(['version'=>$next,'status'=>'DRAFT','change_summary'=>$summary,'created_by'=>$actor?->id]);
+        $next = ((int) $definition->versions()->max('version')) + 1;
+        return $definition->versions()->create([
+            'version' => $next,
+            'status' => 'DRAFT',
+            'change_summary' => $summary,
+            'created_by' => $actor?->id,
+        ]);
     }
 }
