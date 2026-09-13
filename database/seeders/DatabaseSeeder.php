@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             AdminUserSeeder::class,
             WorkflowSeeder::class,
+            WorkflowTestUserSeeder::class,
         ]);
     }
 }
