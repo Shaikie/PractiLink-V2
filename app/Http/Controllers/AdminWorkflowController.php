@@ -17,10 +17,11 @@ use Illuminate\Validation\ValidationException;
 class AdminWorkflowController extends Controller
 {
     private const ACTIONS = [
+        'START_REVIEW' => ['label' => 'Start review', 'permission' => 'applications.review', 'result_status' => 'UNDER_REVIEW'],
         'FORWARD' => ['label' => 'Forward', 'permission' => 'applications.forward', 'result_status' => 'UNDER_REVIEW'],
         'RETURN' => ['label' => 'Return for correction', 'permission' => 'applications.return', 'result_status' => 'RETURNED'],
         'REJECT' => ['label' => 'Reject', 'permission' => 'applications.reject', 'result_status' => 'REJECTED'],
-        'ACCEPT' => ['label' => 'Accept', 'permission' => 'applications.accept', 'result_status' => 'ACCEPTED'],
+        'ACCEPT' => ['label' => 'Approve for next stage', 'permission' => 'applications.accept', 'result_status' => 'ACCEPTED'],
         'COMPLETE_PLACEMENT' => ['label' => 'Complete placement', 'permission' => 'placements.manage', 'result_status' => 'ACCEPTED'],
     ];
 
