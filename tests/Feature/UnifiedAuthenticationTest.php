@@ -20,6 +20,11 @@ class UnifiedAuthenticationTest extends TestCase
         $this->seed(ReferenceDataSeeder::class);
     }
 
+    public function test_root_redirects_guests_to_login(): void
+    {
+        $this->get(route('home'))->assertRedirect(route('login'));
+    }
+
     public function test_user_can_login_with_email_from_shared_login_page(): void
     {
         $user = User::factory()->create(['email' => 'staff@example.test', 'password' => Hash::make('password123'), 'is_active' => true]);

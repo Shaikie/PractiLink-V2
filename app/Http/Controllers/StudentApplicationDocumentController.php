@@ -24,6 +24,7 @@ class StudentApplicationDocumentController extends Controller
             'document' => ['required', File::types($extensions)->min(($type->min_size_kb ?: 1).'kb')->max(($type->max_size_kb ?: 5120).'kb'), 'extensions:'.implode(',', $extensions)],
         ]);
         $documents->store($application, $type, $validated['document'], null);
+
         return back()->with('success', 'Document uploaded successfully.');
     }
 
@@ -31,6 +32,7 @@ class StudentApplicationDocumentController extends Controller
     {
         $this->authorizeView($application);
         abort_unless($document->application_id === $application->id, 404);
+
         return view('student.applications.documents.show', compact('application', 'document'));
     }
 
@@ -40,6 +42,7 @@ class StudentApplicationDocumentController extends Controller
         abort_unless($document->application_id === $application->id, 404);
         abort_unless($document->isPreviewable(), 415, 'This file type cannot be previewed in the browser.');
         abort_unless(Storage::disk($document->disk)->exists($document->path), 404);
+
         return Storage::disk($document->disk)->response($document->path, $document->original_name, [
             'Content-Disposition' => 'inline; filename="'.addslashes($document->original_name).'"',
             'X-Content-Type-Options' => 'nosniff',
@@ -51,6 +54,7 @@ class StudentApplicationDocumentController extends Controller
         $this->authorizeView($application);
         abort_unless($document->application_id === $application->id, 404);
         abort_unless(Storage::disk($document->disk)->exists($document->path), 404);
+
         return Storage::disk($document->disk)->download($document->path, $document->original_name);
     }
 
@@ -61,6 +65,7 @@ class StudentApplicationDocumentController extends Controller
         abort_unless($application->isEditable(), 422, 'Documents cannot be removed after submission.');
         Storage::disk($document->disk)->delete($document->path);
         $document->delete();
+
         return back()->with('success', 'Document removed.');
     }
 
@@ -68,8 +73,16 @@ class StudentApplicationDocumentController extends Controller
     {
         if (Auth::guard('students')->check()) {
             abort_unless($application->student_id === Auth::guard('students')->id(), 403);
+
             return;
         }
-        abort_unless(Auth::guard('web')->check() && Auth::guard('web')->user()->hasPermission('applications.view'), 403);
+
+        $user = Auth::guard('web')->user();
+        abort_unless(
+            $user
+                && $user->hasPermission('applications.view')
+                && Application::query()->visibleToStaff($user)->whereKey($application)->exists(),
+            403,
+        );
     }
 }

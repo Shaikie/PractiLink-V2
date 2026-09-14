@@ -10,13 +10,15 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
+        $password = 'Demo@12345';
+
         $admin = User::updateOrCreate(
             ['email' => 'admin@practilink.co.tz'],
             [
                 'fullname' => 'PractiLink Administrator',
                 'username' => 'admin',
                 'phone' => null,
-                'password' => 'Admin@12345',
+                'password' => $password,
                 'is_active' => true,
             ]
         );

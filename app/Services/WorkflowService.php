@@ -23,7 +23,7 @@ class WorkflowService
             }
 
             $trainingTypeId = $application->applicationWindow?->training_type_id;
-            if (!$trainingTypeId) {
+            if (! $trainingTypeId) {
                 throw ValidationException::withMessages([
                     'workflow' => 'The application has no training type configured.',
                 ]);
@@ -36,7 +36,7 @@ class WorkflowService
                 ->get()
                 ->first(fn ($d) => $d->versions->isNotEmpty());
 
-            if (!$definition) {
+            if (! $definition) {
                 $definition = WorkflowDefinition::query()
                     ->where('is_active', true)
                     ->whereNull('training_type_id')
@@ -45,7 +45,7 @@ class WorkflowService
                     ->first(fn ($d) => $d->versions->isNotEmpty());
             }
 
-            if (!$definition) {
+            if (! $definition) {
                 throw ValidationException::withMessages([
                     'workflow' => 'No published workflow is configured for this training type.',
                 ]);
@@ -55,7 +55,7 @@ class WorkflowService
             $stage = $version->stages()->where('is_starting', true)->first()
                 ?? $version->stages()->orderBy('stage_order')->first();
 
-            if (!$stage) {
+            if (! $stage) {
                 throw ValidationException::withMessages(['workflow' => 'The published workflow has no stages.']);
             }
 
@@ -102,7 +102,7 @@ class WorkflowService
                 ]);
             }
 
-            if ($transition->action === 'COMPLETE_PLACEMENT' && !$workflow->application?->placement) {
+            if ($transition->action === 'COMPLETE_PLACEMENT' && ! $workflow->application?->placement) {
                 throw ValidationException::withMessages([
                     'transition' => 'A placement must be allocated before the placement stage can be completed.',
                 ]);
@@ -139,7 +139,7 @@ class WorkflowService
             ->with(['responsibleRole', 'toStage'])
             ->first();
 
-        if (!$transition) {
+        if (! $transition) {
             throw ValidationException::withMessages([
                 'transition' => 'This action is not configured for the current workflow stage.',
             ]);
@@ -148,54 +148,62 @@ class WorkflowService
         return $transition;
     }
 
+    public function canAct(ApplicationWorkflow $workflow, WorkflowTransition $transition, ?User $actor): bool
+    {
+        if (! $actor) {
+            return false;
+        }
+
+        $workflow->loadMissing('application.department', 'currentStage');
+        $transition->loadMissing('responsibleRole');
+
+        if (
+            $workflow->currentStage?->responsible_role_id
+            && ! $actor->roles()->whereKey($workflow->currentStage->responsible_role_id)->exists()
+        ) {
+            return false;
+        }
+
+        if (
+            $workflow->currentStage?->required_permission
+            && ! $actor->hasPermission($workflow->currentStage->required_permission)
+        ) {
+            return false;
+        }
+
+        if (
+            $transition->responsible_role_id
+            && ! $actor->roles()->whereKey($transition->responsible_role_id)->exists()
+        ) {
+            return false;
+        }
+
+        if (
+            $transition->required_permission
+            && ! $actor->hasPermission($transition->required_permission)
+        ) {
+            return false;
+        }
+
+        return $transition->responsibleRole?->slug !== 'hod'
+            || $workflow->application?->department_id
+                && $actor->departments()->whereKey($workflow->application->department_id)->exists();
+    }
+
     private function authorizeActor(
         ApplicationWorkflow $workflow,
         WorkflowTransition $transition,
         ?User $actor,
     ): void {
-        if (!$actor) {
-            abort(403, 'An authenticated staff account is required.');
+        abort_unless($actor, 403, 'An authenticated staff account is required.');
+
+        if ($transition->responsibleRole?->slug === 'hod' && ! $workflow->application?->department_id) {
+            throw ValidationException::withMessages([
+                'workflow' => 'This application has no department assigned for HOD routing.',
+            ]);
         }
 
-        if (
-            $workflow->currentStage?->responsible_role_id
-            && !$actor->roles()->whereKey($workflow->currentStage->responsible_role_id)->exists()
-        ) {
-            abort(403, 'You do not have the role assigned to this workflow stage.');
-        }
-
-        if (
-            $workflow->currentStage?->required_permission
-            && !$actor->hasPermission($workflow->currentStage->required_permission)
-        ) {
-            abort(403, 'You do not have permission to act on this workflow stage.');
-        }
-
-        if (
-            $transition->responsible_role_id
-            && !$actor->roles()->whereKey($transition->responsible_role_id)->exists()
-        ) {
-            abort(403, 'You do not have the role assigned to this workflow action.');
-        }
-
-        if (
-            $transition->required_permission
-            && !$actor->hasPermission($transition->required_permission)
-        ) {
-            abort(403, 'You do not have permission to perform this workflow action.');
-        }
-
-        if ($transition->responsibleRole?->slug === 'hod') {
-            if (!$workflow->application?->department_id) {
-                throw ValidationException::withMessages([
-                    'workflow' => 'This application has no department assigned for HOD routing.',
-                ]);
-            }
-
-            if (!$actor->departments()->whereKey($workflow->application->department_id)->exists()) {
-                abort(403, 'This application is routed to a different department HOD.');
-            }
-        }
+        abort_unless($this->canAct($workflow, $transition, $actor), 403, 'You are not authorized to perform this workflow action.');
     }
 
     public function createVersion(

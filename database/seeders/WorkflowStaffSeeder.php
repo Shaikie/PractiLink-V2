@@ -10,19 +10,15 @@ class WorkflowStaffSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = config('app.workflow_test_password');
-
-        if (blank($password)) {
-            throw new \RuntimeException('Set APP_WORKFLOW_TEST_PASSWORD in .env before seeding workflow staff.');
-        }
+        $password = 'Demo@12345';
 
         $users = [
-            ['fullname'=>'Workflow Secretary','username'=>'workflow.secretary','email'=>'secretary@practilink.test','role'=>'secretary'],
-            ['fullname'=>'Workflow HR Officer','username'=>'workflow.hr','email'=>'hr@practilink.test','role'=>'hr'],
-            ['fullname'=>'Workflow CTO','username'=>'workflow.cto','email'=>'cto@practilink.test','role'=>'cto'],
-            ['fullname'=>'Workflow HOD - Computer Science','username'=>'workflow.hod.cs','email'=>'hod.cs@practilink.test','role'=>'hod'],
-            ['fullname'=>'Workflow HOD - Information Technology','username'=>'workflow.hod.it','email'=>'hod.it@practilink.test','role'=>'hod'],
-            ['fullname'=>'Workflow HOD - Electronics and Telecommunications','username'=>'workflow.hod.ect','email'=>'hod.ect@practilink.test','role'=>'hod'],
+            ['fullname' => 'Workflow Secretary', 'username' => 'workflow.secretary', 'email' => 'secretary@practilink.test', 'role' => 'secretary'],
+            ['fullname' => 'Workflow HR Officer', 'username' => 'workflow.hr', 'email' => 'hr@practilink.test', 'role' => 'hr'],
+            ['fullname' => 'Workflow CTO', 'username' => 'workflow.cto', 'email' => 'cto@practilink.test', 'role' => 'cto'],
+            ['fullname' => 'Workflow HOD - Computer Science', 'username' => 'workflow.hod.cs', 'email' => 'hod.cs@practilink.test', 'role' => 'hod'],
+            ['fullname' => 'Workflow HOD - Information Technology', 'username' => 'workflow.hod.it', 'email' => 'hod.it@practilink.test', 'role' => 'hod'],
+            ['fullname' => 'Workflow HOD - Electronics and Telecommunications', 'username' => 'workflow.hod.ect', 'email' => 'hod.ect@practilink.test', 'role' => 'hod'],
         ];
 
         foreach ($users as $data) {

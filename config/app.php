@@ -15,8 +15,6 @@ return [
     'previous_keys' => [
         ...array_filter(explode(',', (string) env('APP_PREVIOUS_KEYS', ''))),
     ],
-    'workflow_test_password' => env('APP_WORKFLOW_TEST_PASSWORD'),
-
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),

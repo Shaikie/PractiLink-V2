@@ -37,7 +37,7 @@ class AdminPlacementController extends Controller
             'application' => $application->load('student', 'applicationWindow.trainingType', 'department'),
             'organizations' => Organization::where('is_active', true)->orderBy('name')->get(),
             'departments' => Department::orderBy('name')->get(),
-            'supervisors' => $this->eligibleSupervisors(),
+            'supervisors' => $this->eligibleSupervisors()->get(),
         ]);
     }
 
@@ -61,7 +61,7 @@ class AdminPlacementController extends Controller
             'notes' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        if ($data['supervisor_user_id'] && !$this->eligibleSupervisors()->whereKey($data['supervisor_user_id'])->exists()) {
+        if (($data['supervisor_user_id'] ?? null) && ! $this->eligibleSupervisors()->whereKey($data['supervisor_user_id'])->exists()) {
             throw ValidationException::withMessages([
                 'supervisor_user_id' => 'The selected supervisor is not eligible for supervisor assignment.',
             ]);
@@ -90,7 +90,7 @@ class AdminPlacementController extends Controller
                 ->firstOrFail();
 
             abort_unless(
-                $locked->status === 'ACCEPTED' && !$locked->placement()->exists(),
+                $locked->status === 'ACCEPTED' && ! $locked->placement()->exists(),
                 422,
                 'This application already has a placement or is no longer approved.'
             );
