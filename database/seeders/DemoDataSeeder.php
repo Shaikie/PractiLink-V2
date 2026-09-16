@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Department;
+use App\Models\Organization;
 use App\Models\Role;
 use App\Models\Student;
 use App\Models\User;
@@ -21,6 +22,17 @@ class DemoDataSeeder extends Seeder
                 'Demo data can only be seeded locally or in testing environments.',
             );
         }
+
+        Organization::updateOrCreate(
+            ['code' => 'PRACTILINK'],
+            [
+                'name' => 'PractiLink',
+                'email' => 'info@practilink.co.tz',
+                'phone' => null,
+                'address' => null,
+                'is_active' => true,
+            ],
+        );
 
         $staff = [
             ['fullname' => 'Demo Secretary', 'username' => 'demo.secretary', 'email' => 'secretary.demo@practilink.test', 'role' => 'secretary'],
