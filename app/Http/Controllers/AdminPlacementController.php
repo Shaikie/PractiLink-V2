@@ -33,9 +33,14 @@ class AdminPlacementController extends Controller
         abort_if($application->placement()->exists(), 422, 'This application already has a placement.');
         abort_unless($application->workflow?->currentStage?->code === 'CTO_PLACEMENT', 422, 'This application is not currently at the CTO placement stage.');
 
+        abort_unless(
+            Organization::where('is_active', true)->exists(),
+            422,
+            'No active organization has been configured for PractiLink.'
+        );
+
         return view('admin.placements.form', [
             'application' => $application->load('student', 'applicationWindow.trainingType', 'department'),
-            'organizations' => Organization::where('is_active', true)->orderBy('name')->get(),
             'departments' => Department::orderBy('name')->get(),
             'supervisors' => $this->eligibleSupervisors()->get(),
         ]);
@@ -52,7 +57,6 @@ class AdminPlacementController extends Controller
         abort_unless($application->workflow?->currentStage?->code === 'CTO_PLACEMENT', 422, 'This application is not currently at the CTO placement stage.');
 
         $data = $request->validate([
-            'organization_id' => ['required', 'exists:organizations,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
             'supervisor_user_id' => ['nullable', 'exists:users,id'],
             'start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
@@ -67,10 +71,12 @@ class AdminPlacementController extends Controller
             ]);
         }
 
+        $organization = Organization::where('is_active', true)->orderBy('id')->first();
+
         abort_unless(
-            Organization::whereKey($data['organization_id'])->where('is_active', true)->exists(),
+            $organization,
             422,
-            'The selected organization is not active.'
+            'No active organization has been configured for PractiLink.'
         );
 
         if (
@@ -82,7 +88,7 @@ class AdminPlacementController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($data, $application, $request, $lifecycle): void {
+        DB::transaction(function () use ($data, $organization, $application, $request, $lifecycle): void {
             $locked = Application::query()
                 ->whereKey($application->id)
                 ->lockForUpdate()
@@ -103,6 +109,7 @@ class AdminPlacementController extends Controller
             $placement = Placement::create($data + [
                 'application_id' => $locked->id,
                 'student_id' => $locked->student_id,
+                'organization_id' => $organization->id,
                 'reference_number' => $this->reference(),
                 'status' => 'ALLOCATED',
             ]);
@@ -182,10 +189,7 @@ class AdminPlacementController extends Controller
     {
         return User::query()
             ->where('is_active', true)
-            ->where(function ($query) {
-                $query->whereHas('permissions', fn ($q) => $q->where('slug', 'applications.assign_supervisor'))
-                    ->orWhereHas('roles.permissions', fn ($q) => $q->where('slug', 'applications.assign_supervisor'));
-            })
+            ->whereHas('roles', fn ($query) => $query->where('slug', 'supervisor'))
             ->orderBy('fullname');
     }
 
