@@ -26,8 +26,8 @@ class DemoDataSeeder extends Seeder
         Organization::updateOrCreate(
             ['code' => 'PRACTILINK'],
             [
-                'name' => 'PractiLink',
-                'email' => 'info@practilink.co.tz',
+                'name' => 'Tanzania Education and Research Network TERNET',
+                'email' => 'info@ternetwork.co.tz',
                 'phone' => null,
                 'address' => null,
                 'is_active' => true,
