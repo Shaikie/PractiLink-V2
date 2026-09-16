@@ -13,7 +13,7 @@
                 <div class="form-group col-md-4"><label>Code</label><input name="code" value="{{ old('code') }}" class="form-control" placeholder="practical_training" required>@error('code')<small class="text-danger">{{ $message }}</small>@enderror</div>
             </div>
             <div class="form-group"><label>Training type <span class="font-weight-normal text-muted">(optional)</span></label><select name="training_type_id" class="custom-select"><option value="">All training types</option>@foreach($trainingTypes as $type)<option value="{{ $type->id }}" @selected(old('training_type_id')==$type->id)>{{ $type->name }}</option>@endforeach</select></div>
-            <div class="form-group mb-0"><label>Description <span class="font-weight-normal text-muted">(optional)</span></label><textarea name="description" rows="4" class="form-control" placeholder="Describe when this workflow should be used.">{{ old('description') }}</textarea></div>
+            <div class="form-group mb-0"><label>Description <span class="font-weight-normal text-muted">(optional)</span></label><textarea name="description" rows="5" class="form-control tinymce-editor" maxlength="5000" placeholder="Describe when this workflow should be used.">{{ old('description') }}</textarea><small class="form-text text-muted">Rich text is supported for workflow guidance and instructions.</small></div>
         </div>
         <div class="clay-card-footer"><a href="{{ route('admin.workflows.index') }}" class="btn btn-light clay-btn-secondary">Cancel</a><button class="btn btn-primary clay-btn-primary"><i class="fas fa-plus mr-1"></i>Create Workflow</button></div>
     </form>
