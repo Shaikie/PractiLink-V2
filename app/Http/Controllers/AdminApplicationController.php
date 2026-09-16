@@ -24,7 +24,7 @@ class AdminApplicationController extends Controller
             ->visibleToStaff($user)
             ->latest('submitted_at');
 
-        return view('admin.applications.index', ['applications' => $query->get()]);
+        return view('admin.applications.index', ['applications' => $query->paginate(15)->withQueryString()]);
     }
 
     public function show(Request $request, Application $application, WorkflowService $workflows)
@@ -81,8 +81,6 @@ class AdminApplicationController extends Controller
             $data['comment'] ?? null,
         );
 
-        // Lifecycle changes are audited inside the service. Keep the controller
-        // responsible only for the user-facing notification and redirect.
         if ($old !== $updated->only(['status', 'reviewed_at'])) {
             $updated->student->notify(new ApplicationStatusUpdated($updated));
         }
