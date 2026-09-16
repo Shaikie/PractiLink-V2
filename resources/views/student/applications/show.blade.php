@@ -22,7 +22,7 @@
             </div>
             <div class="card-footer d-flex justify-content-between"><a href="{{ route('student.applications.index') }}" class="btn btn-light border"><i class="fas fa-arrow-left mr-1"></i>Back</a>
                 <div>@if($application->isEditable())
-                    <form method="POST" action="{{ route('student.applications.submit',$application) }}" class="d-inline">@csrf<button class="btn btn-success" type="submit">Submit application</button></form>@endif @if(in_array($application->status,['DRAFT','SUBMITTED','RETURNED'],true))<form method="POST" action="{{ route('student.applications.cancel',$application) }}" class="d-inline ml-2">@csrf<button class="btn btn-outline-danger" type="submit">Cancel</button></form>@endif</div>
+                    <form method="POST" action="{{ route('student.applications.submit',$application) }}" class="d-inline">@csrf<button class="btn btn-success" type="submit">Submit application</button></form>@endif @if(in_array($application->status,['DRAFT','SUBMITTED','RETURNED', 'UNDER_REVIEW'],true))<form method="POST" action="{{ route('student.applications.cancel',$application) }}" class="d-inline ml-2">@csrf<button class="btn btn-outline-danger" type="submit">Cancel</button></form>@endif</div>
             </div>
         </div>
         <div class="card">
