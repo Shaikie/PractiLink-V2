@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -26,6 +28,7 @@ class PasswordResetController extends Controller
 
         $email = strtolower(trim($data['email']));
         $broker = $data['account_type'] === 'student' ? 'students' : 'users';
+        $model = $data['account_type'] === 'student' ? Student::class : User::class;
         $throttleKey = 'password-reset:'.$broker.'|'.$email.'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
@@ -36,9 +39,11 @@ class PasswordResetController extends Controller
 
         RateLimiter::hit($throttleKey, 300);
 
-        Password::broker($broker)->sendResetLink(['email' => $email]);
+        if ($model::where('email', $email)->where('is_active', true)->exists()) {
+            Password::broker($broker)->sendResetLink(['email' => $email]);
+        }
 
-        return back()->with('status', 'If an account matches that email address, a password reset link has been sent.');
+        return back()->with('status', 'If an active account matches that email address, a password reset link has been sent.');
     }
 
     public function createResetForm(Request $request, string $token)
