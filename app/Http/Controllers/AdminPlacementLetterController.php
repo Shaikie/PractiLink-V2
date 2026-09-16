@@ -13,7 +13,7 @@ class AdminPlacementLetterController extends Controller
     {
         $version=((int)$placement->letters()->max('version'))+1;
         $reference='PLL-'.now()->format('Ymd').'-'.Str::upper(Str::random(8));
-        $content=view('admin.placements.letter',['placement'=>$placement->load(['student','organization','department','application.applicationWindow.trainingType']),'reference'=>$reference,'version'=>$version])->render();
+        $content=view('admin.placements.letter',['placement'=>$placement->load(['student','organization','department','supervisor','application.applicationWindow.trainingType']),'reference'=>$reference,'version'=>$version])->render();
         $letter=PlacementLetter::create(['placement_id'=>$placement->id,'version'=>$version,'reference_number'=>$reference,'issued_at'=>today(),'content'=>$content,'issued_by'=>$request->user()->id]);
         return response($letter->content)->header('Content-Type','text/html; charset=UTF-8');
     }
