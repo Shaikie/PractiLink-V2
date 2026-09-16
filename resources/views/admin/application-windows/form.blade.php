@@ -15,9 +15,9 @@
                     <div class="form-group"><label for="training_type_id">Training type</label><select id="training_type_id" name="training_type_id" class="form-control" required>
                             <option value="">Select training type</option>@foreach($trainingTypes as $type)<option value="{{ $type->id }}" @selected((string)old('training_type_id',$window->training_type_id)===(string)$type->id)>{{ $type->name }}</option>@endforeach
                         </select></div>
-                    <div class="row">
-                        <div class="col-md-6 form-group"><label for="opens_at">Opens</label><input id="opens_at" type="datetime-local" name="opens_at" class="form-control" value="{{ old('opens_at',$window->opens_at?->format('Y-m-d\\TH:i')) }}" min="{{ now()->format('Y-m-d\\TH:i') }}" required><small class="form-text text-muted">Must be now or later for a new window.</small></div>
-                        <div class="col-md-6 form-group"><label for="closes_at">Closes</label><input id="closes_at" type="datetime-local" name="closes_at" class="form-control" value="{{ old('closes_at',$window->closes_at?->format('Y-m-d\\TH:i')) }}" required><small class="form-text text-muted">Must be at least 30 minutes after opening.</small></div>
+                    <div class="row datetime-range-group">
+                        <div class="col-md-6 form-group"><label for="opens_at">Opens</label><input id="opens_at" type="text" name="opens_at" class="form-control" data-datetime-start data-min-date="{{ now()->format('Y-m-d H:i') }}" value="{{ old('opens_at',$window->opens_at?->format('Y-m-d\\TH:i')) }}" placeholder="Select opening date and time" autocomplete="off" required><small class="form-text text-muted">Must be now or later for a new window.</small></div>
+                        <div class="col-md-6 form-group"><label for="closes_at">Closes</label><input id="closes_at" type="text" name="closes_at" class="form-control" data-datetime-end value="{{ old('closes_at',$window->closes_at?->format('Y-m-d\\TH:i')) }}" placeholder="Select closing date and time" autocomplete="off" required><small class="form-text text-muted">Must be at least 30 minutes after opening.</small></div>
                     </div>
                     <div class="form-check"><input id="is_active" type="checkbox" name="is_active" value="1" class="form-check-input" @checked(old('is_active',$window->exists?$window->is_active:true))><label for="is_active" class="form-check-label">Active</label></div>
                 </div>
@@ -26,26 +26,4 @@
         </div>
     </div>
 </div>
-@push('scripts')<script>
-    (() => {
-        const open = document.getElementById('opens_at'),
-            close = document.getElementById('closes_at');
-        if (!open || !close) return;
-        const sync = () => {
-            if (!open.value) return;
-            const d = new Date(open.value);
-            d.setMinutes(d.getMinutes() + 30);
-            close.min = d.toISOString().slice(0, 16);
-            if (close.value && new Date(close.value) <= d) close.value = '';
-        };
-        open.addEventListener('change', sync);
-        sync();
-        document.querySelector('form')?.addEventListener('submit', e => {
-            if (open.value && close.value && new Date(close.value) <= new Date(new Date(open.value).getTime() + 1800000)) {
-                e.preventDefault();
-                alert('Closing time must be at least 30 minutes after opening.');
-            }
-        });
-    })();
-</script>@endpush
 @endsection
