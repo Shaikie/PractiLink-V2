@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use App\Notifications\PasswordResetNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,10 +15,10 @@ use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['fullname', 'email', 'username', 'phone', 'password', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, CanResetPassword;
 
     public function roles(): BelongsToMany { return $this->belongsToMany(Role::class, 'user_roles'); }
     public function permissions(): BelongsToMany { return $this->belongsToMany(Permission::class, 'permission_user'); }
@@ -25,6 +28,11 @@ class User extends Authenticatable
     {
         return $this->permissions()->where('slug', $permission)->exists()
             || $this->roles()->whereHas('permissions', fn ($query) => $query->where('slug', $permission))->exists();
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new PasswordResetNotification($token, 'staff'));
     }
 
     protected function casts(): array

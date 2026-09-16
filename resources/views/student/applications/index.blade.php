@@ -11,5 +11,7 @@
 @empty
 <tr><td colspan="6"><div class="clay-empty-state"><div class="clay-empty-icon"><i class="fas fa-file-alt"></i></div><h3>No applications yet</h3><p>Start a new application when a practical training window is open.</p><a href="{{ route('student.applications.create') }}" class="btn btn-primary clay-btn-primary">Start Application</a></div></td></tr>
 @endforelse
-</tbody></table></div></div>
+</tbody></table></div>
+@if($applications->hasPages())<div class="p-3 border-top">{{ $applications->links() }}</div>@endif
+</div>
 @endsection

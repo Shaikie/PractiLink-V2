@@ -27,7 +27,7 @@ class AdminWorkflowController extends Controller
 
     public function index()
     {
-        return view('admin.workflows.index', ['workflows' => WorkflowDefinition::with(['trainingType', 'versions'])->latest()->get()]);
+        return view('admin.workflows.index', ['workflows' => WorkflowDefinition::with(['trainingType', 'versions'])->latest()->paginate(15)]);
     }
 
     public function create()

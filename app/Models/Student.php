@@ -2,17 +2,20 @@
 
 namespace App\Models;
 
+use App\Notifications\PasswordResetNotification;
 use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
+use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 
-class Student extends Model implements Authenticatable
+class Student extends Model implements Authenticatable, CanResetPasswordContract
 {
-    use AuthenticatableTrait, HasFactory, Notifiable;
+    use AuthenticatableTrait, CanResetPassword, HasFactory, Notifiable;
 
     protected $fillable = [
         'first_name', 'last_name', 'registration_number', 'email', 'phone', 'gender',
@@ -41,5 +44,10 @@ class Student extends Model implements Authenticatable
     public function getFullNameAttribute(): string
     {
         return trim($this->first_name.' '.$this->last_name);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new PasswordResetNotification($token, 'student'));
     }
 }

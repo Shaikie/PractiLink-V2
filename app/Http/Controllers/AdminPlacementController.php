@@ -22,7 +22,7 @@ class AdminPlacementController extends Controller
         return view('admin.placements.index', [
             'placements' => Placement::with(['student', 'organization', 'department', 'application'])
                 ->latest()
-                ->get(),
+                ->paginate(15),
         ]);
     }
 

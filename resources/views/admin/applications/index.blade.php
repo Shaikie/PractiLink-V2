@@ -10,5 +10,6 @@
 <div class="table-responsive"><table class="table mb-0"><thead><tr><th>Reference</th><th>Student</th><th>Training</th><th>Status</th><th>Submitted</th><th></th></tr></thead><tbody>
 @foreach($applications as $application)<tr><td class="font-weight-bold">{{ $application->reference_number }}</td><td>{{ $application->student->full_name }}</td><td>{{ $application->applicationWindow->trainingType->name }}</td><td><span class="badge badge-primary">{{ str_replace('_', ' ', $application->status) }}</span></td><td>{{ $application->submitted_at?->format('d M Y, H:i') ?? '—' }}</td><td class="text-right"><a href="{{ route('admin.applications.show', $application) }}" class="btn btn-sm btn-outline-primary">Review</a></td></tr>@endforeach
 </tbody></table></div>@endif
+@if($applications->hasPages())<div class="p-3 border-top">{{ $applications->links() }}</div>@endif
 </div></div>
 @endsection

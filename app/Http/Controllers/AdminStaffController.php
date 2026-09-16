@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class AdminStaffController extends Controller
 {
-    public function index() { return view('admin.staff.index', ['staff'=>User::with(['roles','permissions'])->orderBy('fullname')->get()]); }
+    public function index() { return view('admin.staff.index', ['staff'=>User::with(['roles','permissions'])->orderBy('fullname')->paginate(15)]); }
     public function create() { return view('admin.staff.form', ['staff'=>new User(), 'roles'=>Role::orderBy('name')->get(), 'permissions'=>Permission::orderBy('name')->get(), 'editing'=>false]); }
     public function store(Request $request)
     {

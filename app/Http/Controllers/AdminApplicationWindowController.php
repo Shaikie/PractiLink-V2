@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class AdminApplicationWindowController extends Controller
 {
-    public function index(){return view('admin.application-windows.index',['windows'=>ApplicationWindow::with('trainingType')->latest('opens_at')->get()]);}
+    public function index(){return view('admin.application-windows.index',['windows'=>ApplicationWindow::with('trainingType')->latest('opens_at')->paginate(15)]);}
     public function create(){return view('admin.application-windows.form',['window'=>new ApplicationWindow(),'trainingTypes'=>TrainingType::orderBy('name')->get()]);}
     public function store(Request $request){$validated=$this->validateWindow($request);$window=ApplicationWindow::create($validated);AuditLogger::record('application_window.created',$window,null,$window->toArray());return redirect()->route('admin.application-windows.index')->with('success','Application window created.');}
     public function edit(ApplicationWindow $applicationWindow){return view('admin.application-windows.form',['window'=>$applicationWindow,'trainingTypes'=>TrainingType::orderBy('name')->get()]);}
