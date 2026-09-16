@@ -22,6 +22,7 @@
                 </tr>
             @endforeach
             </tbody></table></div>
+            @if($windows->hasPages())<div class="p-3 border-top">{{ $windows->links() }}</div>@endif
         @endif
     </div>
 </div>
