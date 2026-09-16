@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\PasswordResetNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Passwords\CanResetPassword;
 use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
@@ -27,6 +28,11 @@ class User extends Authenticatable implements CanResetPasswordContract
     {
         return $this->permissions()->where('slug', $permission)->exists()
             || $this->roles()->whereHas('permissions', fn ($query) => $query->where('slug', $permission))->exists();
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new PasswordResetNotification($token, 'staff'));
     }
 
     protected function casts(): array
