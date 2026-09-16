@@ -22,7 +22,7 @@ class StudentApplicationController extends Controller
             'applications' => $student->applications()
                 ->with(['applicationWindow.trainingType', 'department', 'documents.documentType', 'workflow.currentStage'])
                 ->latest()
-                ->get(),
+                ->paginate(10),
         ]);
     }
 
