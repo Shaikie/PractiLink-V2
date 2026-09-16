@@ -12,6 +12,8 @@
 @php $published=$workflow->versions->where('status','PUBLISHED')->sortByDesc('version')->first(); $draft=$workflow->versions->where('status','DRAFT')->sortByDesc('version')->first(); @endphp
 <tr><td><div class="font-weight-bold">{{ $workflow->name }}</div><div class="clay-muted small">{{ $workflow->code }}</div></td><td>{{ $workflow->trainingType?->name ?? 'All training types' }}</td><td>@if($published)<span class="badge badge-success clay-badge">v{{ $published->version }} · Published</span>@else<span class="clay-muted">—</span>@endif</td><td>@if($draft)<span class="badge badge-warning clay-badge">v{{ $draft->version }} · Draft</span>@else<span class="clay-muted">—</span>@endif</td><td>{{ $workflow->updated_at?->format('d M Y') }}</td><td class="text-right"><a href="{{ route('admin.workflows.show',$workflow) }}" class="btn btn-sm btn-outline-primary clay-btn-outline"><i class="fas fa-sliders-h mr-1"></i>Manage</a></td></tr>
 @endforeach
-</tbody></table></div></div>
+</tbody></table></div>
+@if($workflows->hasPages())<div class="p-3 border-top">{{ $workflows->links() }}</div>@endif
+</div>
 @endif
 @endsection
