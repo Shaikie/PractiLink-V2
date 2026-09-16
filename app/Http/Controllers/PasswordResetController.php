@@ -65,6 +65,7 @@ class PasswordResetController extends Controller
             'account_type' => ['required', 'in:student,staff'],
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'confirmed', PasswordRule::min(8)->letters()->mixedCase()->numbers()],
+            'password_confirmation' => ['required', 'string'],
         ]);
 
         $broker = $data['account_type'] === 'student' ? 'students' : 'users';
