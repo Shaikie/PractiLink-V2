@@ -20,7 +20,7 @@ class AdminApplicationController extends Controller
             'applicationWindow.trainingType',
             'workflow.currentStage',
         ])
-            ->whereIn('status', ['SUBMITTED', 'UNDER_REVIEW', 'RETURNED', 'ACCEPTED', 'REJECTED'])
+            ->whereIn('status', ['SUBMITTED', 'UNDER_REVIEW', 'RETURNED', 'ACCEPTED', 'PLACED', 'REJECTED'])
             ->visibleToStaff($user)
             ->latest('submitted_at');
 
@@ -44,6 +44,8 @@ class AdminApplicationController extends Controller
             'workflow.currentStage',
             'workflow.version',
             'workflow.history.toStage',
+            'placement.organization',
+            'placement.supervisor',
         ]);
 
         $transitions = collect();
