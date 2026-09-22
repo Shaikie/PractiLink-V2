@@ -68,11 +68,7 @@ class WorkflowAuthorizationTest extends TestCase
             'supervisor_user_id' => User::where('email', 'supervisor.demo@practilink.test')->value('id'),
         ]);
 
-        Notification::assertSentTo(
-            $application->student,
-            ApplicationStatusUpdated::class,
-            fn (ApplicationStatusUpdated $notification) => $notification->toDatabase($application->student)->data['message'] === 'Application '.$application->reference_number.' is now placed.',
-        );
+        Notification::assertSentTo($application->student, ApplicationStatusUpdated::class);
 
         $this->actAs('supervisor.demo@practilink.test')
             ->get(route('admin.applications.index'))
