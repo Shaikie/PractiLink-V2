@@ -27,7 +27,7 @@ class WorkflowSeeder extends Seeder
         ['from'=>'DEPARTMENT_REVIEW','to'=>'CTO_PLACEMENT','action'=>'ACCEPT','label'=>'Approve for CTO placement','status'=>'ACCEPTED','role'=>'hod','comment'=>false],
         ['from'=>'DEPARTMENT_REVIEW','to'=>'HR_REVIEW','action'=>'RETURN','label'=>'Return to HR','status'=>'RETURNED','role'=>'hod','comment'=>true],
         ['from'=>'DEPARTMENT_REVIEW','to'=>'COMPLETED','action'=>'REJECT','label'=>'Reject application','status'=>'REJECTED','role'=>'hod','comment'=>true],
-        ['from'=>'CTO_PLACEMENT','to'=>'COMPLETED','action'=>'COMPLETE_PLACEMENT','label'=>'Complete placement','status'=>'ACCEPTED','role'=>'cto','comment'=>false],
+        ['from'=>'CTO_PLACEMENT','to'=>'COMPLETED','action'=>'COMPLETE_PLACEMENT','label'=>'Complete placement','status'=>'PLACED','role'=>'cto','comment'=>false],
     ];
 
     public function run(): void
