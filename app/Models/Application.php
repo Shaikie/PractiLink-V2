@@ -61,7 +61,8 @@ class Application extends Model
     }
 
     /**
-     * Limit staff to the applications available to their workflow role.
+     * Limit staff to applications available through their workflow role
+     * or an assignment made directly on the placement.
      * Administrators may view every application.
      */
     public function scopeVisibleToStaff(Builder $query, User $user): void
@@ -73,8 +74,16 @@ class Application extends Model
         $roleIds = $user->roles()->pluck('roles.id');
 
         $query->where(function (Builder $query) use ($roleIds): void {
-            $query->whereHas('workflow.currentStage', fn (Builder $stage) => $stage->whereIn('responsible_role_id', $roleIds))
-                ->orWhereHas('workflow.currentStage.transitions', fn (Builder $transition) => $transition->whereIn('responsible_role_id', $roleIds));
+            $query->whereHas(
+                'workflow.currentStage',
+                fn (Builder $stage) => $stage->whereIn('responsible_role_id', $roleIds),
+            )->orWhereHas(
+                'workflow.currentStage.transitions',
+                fn (Builder $transition) => $transition->whereIn('responsible_role_id', $roleIds),
+            )->orWhereHas(
+                'placement',
+                fn (Builder $placement) => $placement->where('supervisor_user_id', $user->id),
+            );
         });
 
         if ($user->roles()->where('slug', 'hod')->exists()) {
