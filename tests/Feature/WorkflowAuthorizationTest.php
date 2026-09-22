@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\Organization;
 use App\Models\User;
+use App\Notifications\ApplicationStatusUpdated;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class WorkflowAuthorizationTest extends TestCase
@@ -18,6 +20,7 @@ class WorkflowAuthorizationTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
         $this->seed(DemoDataSeeder::class);
+        Notification::fake();
 
         $application = Application::where('reference_number', 'like', 'DEMO-PT-%')->firstOrFail();
 
@@ -52,13 +55,29 @@ class WorkflowAuthorizationTest extends TestCase
             ->post(route('admin.placements.store', $application), [
                 'organization_id' => $organization->id,
                 'department_id' => $application->department_id,
+                'supervisor_user_id' => User::where('email', 'supervisor.demo@practilink.test')->value('id'),
                 'start_date' => $application->training_start_date->format('Y-m-d'),
                 'end_date' => $application->training_end_date->format('Y-m-d'),
             ])
             ->assertRedirect(route('admin.placements.index'));
 
-        $this->assertWorkflowStage($application, 'COMPLETED', 'ACCEPTED');
-        $this->assertDatabaseHas('placements', ['application_id' => $application->id, 'status' => 'ALLOCATED']);
+        $this->assertWorkflowStage($application, 'COMPLETED', 'PLACED');
+        $this->assertDatabaseHas('placements', [
+            'application_id' => $application->id,
+            'status' => 'ALLOCATED',
+            'supervisor_user_id' => User::where('email', 'supervisor.demo@practilink.test')->value('id'),
+        ]);
+
+        Notification::assertSentTo(
+            $application->student,
+            ApplicationStatusUpdated::class,
+            fn (ApplicationStatusUpdated $notification) => $notification->toDatabase($application->student)->data['message'] === 'Application '.$application->reference_number.' is now placed.',
+        );
+
+        $this->actAs('supervisor.demo@practilink.test')
+            ->get(route('admin.applications.index'))
+            ->assertOk()
+            ->assertSee($application->reference_number);
     }
 
     private function actAs(string $email): static
