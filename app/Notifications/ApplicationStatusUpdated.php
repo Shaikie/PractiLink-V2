@@ -25,7 +25,7 @@ class ApplicationStatusUpdated extends Notification
             'title' => 'Application status updated',
             'message' => 'Application '.$this->application->reference_number.' is now '.str_replace('_', ' ', $this->application->status).'.',
             'application_id' => $this->application->id,
-            'url' => route('student.applications.show', $this->application),
+            'url' => route('student.applications.show', ['application' => $this->application->id]),
         ]);
     }
 
@@ -37,7 +37,7 @@ class ApplicationStatusUpdated extends Notification
             ->subject('PractiLink application status updated')
             ->greeting('Hello '.$notifiable->full_name.',')
             ->line('Your application '.$this->application->reference_number.' is now '.$status.'.')
-            ->action('View application', route('student.applications.show', $this->application))
+            ->action('View application', route('student.applications.show', ['application' => $this->application->id]))
             ->line('You can sign in to PractiLink to review the latest details and progress.');
     }
 }
