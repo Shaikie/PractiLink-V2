@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Application;
 use App\Models\DocumentType;
 use App\Models\User;
+use App\Notifications\ApplicationStatusUpdated;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -205,7 +206,18 @@ class ApplicationLifecycleService
                 $comment,
             );
 
-            return $locked->fresh();
+            $updated = $locked->fresh();
+
+            AuditLogger::record(
+                'application.placement_completed',
+                $updated,
+                ['status' => 'ACCEPTED'],
+                ['status' => $updated->status],
+            );
+
+            $updated->student->notify(new ApplicationStatusUpdated($updated, 'PLACED'));
+
+            return $updated;
         });
     }
 
