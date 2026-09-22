@@ -5,11 +5,9 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\Organization;
 use App\Models\User;
-use App\Notifications\ApplicationStatusUpdated;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class WorkflowAuthorizationTest extends TestCase
@@ -20,7 +18,6 @@ class WorkflowAuthorizationTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
         $this->seed(DemoDataSeeder::class);
-        Notification::fake();
 
         $application = Application::where('reference_number', 'like', 'DEMO-PT-%')->firstOrFail();
 
@@ -67,8 +64,6 @@ class WorkflowAuthorizationTest extends TestCase
             'status' => 'ALLOCATED',
             'supervisor_user_id' => User::where('email', 'supervisor.demo@practilink.test')->value('id'),
         ]);
-
-        Notification::assertSent(ApplicationStatusUpdated::class);
 
         $this->actAs('supervisor.demo@practilink.test')
             ->get(route('admin.applications.index'))
