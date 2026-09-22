@@ -8,7 +8,7 @@ use App\Services\ApplicationLifecycleService;
 use App\Services\WorkflowService;
 use Illuminate\Http\Request;
 
-class AdminApplicationController
+class AdminApplicationController extends Controller
 {
     public function index(Request $request)
     {
