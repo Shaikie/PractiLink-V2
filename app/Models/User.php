@@ -18,16 +18,26 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, CanResetPassword;
+    use CanResetPassword, HasFactory, Notifiable;
 
-    public function roles(): BelongsToMany { return $this->belongsToMany(Role::class, 'user_roles'); }
-    public function permissions(): BelongsToMany { return $this->belongsToMany(Permission::class, 'permission_user'); }
-    public function departments(): BelongsToMany { return $this->belongsToMany(Department::class, 'department_user'); }
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_roles');
+    }
+
+    public function permissions(): BelongsToMany
+    {
+        return $this->belongsToMany(Permission::class, 'permission_user');
+    }
+
+    public function departments(): BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'department_user');
+    }
 
     public function hasPermission(string $permission): bool
     {
-        return $this->permissions()->where('slug', $permission)->exists()
-            || $this->roles()->whereHas('permissions', fn ($query) => $query->where('slug', $permission))->exists();
+        return $this->roles()->whereHas('permissions', fn ($query) => $query->where('slug', $permission))->exists();
     }
 
     public function sendPasswordResetNotification($token): void

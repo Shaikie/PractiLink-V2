@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title','Staff')
 @section('page_title','Staff Management')
-@section('page_description','Manage staff accounts, roles and workflow permissions.')
+@section('page_description','Manage staff accounts and roles.')
 @section('content')
 @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 <div class="card">
@@ -18,7 +18,6 @@
                         <th>Username</th>
                         <th>Email</th>
                         <th>Roles</th>
-                        <th>Direct permissions</th>
                         <th>Status</th>
                         <th></th>
                     </tr>
@@ -28,11 +27,10 @@
                         <td>{{ $member->username }}</td>
                         <td>{{ $member->email }}</td>
                         <td>@forelse($member->roles as $role)<span class="badge badge-info mr-1">{{ $role->name }}</span>@empty<span class="text-muted">None</span>@endforelse</td>
-                        <td>{{ $member->permissions->count() }}</td>
                         <td><span class="badge badge-{{ $member->is_active?'success':'secondary' }}">{{ $member->is_active?'Active':'Disabled' }}</span></td>
                         <td class="text-right"><a href="{{ route('admin.staff.edit',$member) }}" class="btn btn-sm btn-outline-primary">Edit access</a></td>
                     </tr>@empty<tr>
-                        <td colspan="7" class="text-center text-muted p-4">No staff accounts found.</td>
+                        <td colspan="6" class="text-center text-muted p-4">No staff accounts found.</td>
                     </tr>@endforelse</tbody>
             </table>
         </div><div class="p-3 border-top">{{ $staff->onEachSide(2)->links() }}</div>
