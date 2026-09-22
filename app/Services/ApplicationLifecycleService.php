@@ -215,10 +215,12 @@ class ApplicationLifecycleService
                 ['status' => $updated->status],
             );
 
-            $updated->student->notify(new ApplicationStatusUpdated($updated, 'PLACED'));
-
             return $updated;
         });
+
+        $updated->student->notify(new ApplicationStatusUpdated($updated, 'PLACED'));
+
+        return $updated;
     }
 
     private function assertReadyForSubmission(Application $application): void
