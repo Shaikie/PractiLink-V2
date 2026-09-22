@@ -72,9 +72,10 @@ class Application extends Model
 
         $roleIds = $user->roles()->pluck('roles.id');
 
-        $query->where(function (Builder $query) use ($roleIds): void {
+        $query->where(function (Builder $query) use ($roleIds, $user): void {
             $query->whereHas('workflow.currentStage', fn (Builder $stage) => $stage->whereIn('responsible_role_id', $roleIds))
-                ->orWhereHas('workflow.currentStage.transitions', fn (Builder $transition) => $transition->whereIn('responsible_role_id', $roleIds));
+                ->orWhereHas('workflow.currentStage.transitions', fn (Builder $transition) => $transition->whereIn('responsible_role_id', $roleIds))
+                ->orWhereHas('placement', fn (Builder $placement) => $placement->where('supervisor_user_id', $user->id));
         });
 
         if ($user->roles()->where('slug', 'hod')->exists()) {
