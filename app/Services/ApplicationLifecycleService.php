@@ -39,6 +39,7 @@ class ApplicationLifecycleService
         'UNDER_REVIEW',
         'RETURNED',
         'ACCEPTED',
+        'PLACED',
         'REJECTED',
     ];
 
@@ -192,11 +193,13 @@ class ApplicationLifecycleService
             );
             $status = strtoupper((string) $transition->result_status);
 
-            if ($status !== 'ACCEPTED') {
+            if ($status !== 'PLACED') {
                 throw ValidationException::withMessages([
-                    'transition' => 'The placement completion transition must preserve the accepted application outcome.',
+                    'transition' => 'The placement completion transition must result in a placed application.',
                 ]);
             }
+
+            $old = $locked->only(['status', 'reviewed_at']);
 
             $this->workflows->transition(
                 $locked->workflow,
@@ -205,7 +208,23 @@ class ApplicationLifecycleService
                 $comment,
             );
 
-            return $locked->fresh();
+            $locked->update([
+                'status' => 'PLACED',
+                'reviewed_at' => $locked->reviewed_at ?? now(),
+            ]);
+
+            $updated = $locked->fresh();
+
+            AuditLogger::record(
+                'application.placement_completed',
+                $updated,
+                $old,
+                $updated->only(['status', 'reviewed_at']),
+            );
+
+            $updated->student->notify(new ApplicationStatusUpdated($updated));
+
+            return $updated;
         });
     }
 
