@@ -44,6 +44,7 @@ class AdminWorkflowController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
         ]);
         $definition = WorkflowDefinition::create($data);
+        
         app(WorkflowService::class)->createVersion($definition, $request->user(), 'Initial workflow version');
         return redirect()->route('admin.workflows.show', $definition)->with('success', 'Workflow created. Configure the draft before publishing it.');
     }
