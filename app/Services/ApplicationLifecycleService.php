@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Application;
 use App\Models\DocumentType;
 use App\Models\User;
+use App\Notifications\ApplicationStatusUpdated;
 use App\Support\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
