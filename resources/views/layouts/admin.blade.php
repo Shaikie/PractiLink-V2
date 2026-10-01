@@ -250,7 +250,7 @@
                                     <li class="nav-item has-treeview {{ $identityReferenceDataActive ? 'menu-open' : '' }}">
                                         <a href="#" class="nav-link {{ $identityReferenceDataActive ? 'active' : '' }}">
                                             <i class="nav-icon fas fa-users" aria-hidden="true"></i>
-                                            <p>Institutions & identity <i class="right fas fa-angle-left" aria-hidden="true"></i></p>
+                                            <p>Institutions and identity <i class="right fas fa-angle-left" aria-hidden="true"></i></p>
                                         </a>
                                         <ul class="nav nav-treeview">
                                             <x-layouts.sidebar-link
