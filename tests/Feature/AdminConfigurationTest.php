@@ -66,7 +66,7 @@ class AdminConfigurationTest extends TestCase
             ->assertOk()
             ->assertSee('Academic setup')
             ->assertSee('Training setup')
-            ->assertSee('Institutions &amp; identity', false)
+            ->assertSee('Institutions & identity')
             ->assertSee('Training tracking')
             ->assertSee(route('admin.reference-data.departments.index'), false)
             ->assertSee(route('admin.reference-data.courses.index'), false)
