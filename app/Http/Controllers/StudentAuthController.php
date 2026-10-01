@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -22,6 +23,7 @@ class StudentAuthController extends Controller
         if (Auth::guard('web')->check() || Auth::guard('students')->check()) {
             return redirect()->route('dashboard');
         }
+
         return view('auth.login');
     }
 
@@ -34,11 +36,6 @@ class StudentAuthController extends Controller
 
         $login = trim($validated['login']);
         $normalizedLogin = strtolower($login);
-        $throttleKey = 'login:'.$normalizedLogin.'|'.$request->ip();
-
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            throw ValidationException::withMessages(['login' => 'Too many login attempts. Please try again in a minute.']);
-        }
 
         $user = User::where('email', $normalizedLogin)->orWhere('username', $login)->first();
 
@@ -52,8 +49,9 @@ class StudentAuthController extends Controller
 
             if ($authenticated) {
                 $request->session()->regenerate();
-                RateLimiter::clear($throttleKey);
+                RateLimiter::clear(Str::transliterate(Str::lower($login)).'|'.$request->ip());
                 $request->user('web')->forceFill(['last_login_at' => now()])->save();
+
                 return redirect()->intended(route('dashboard'));
             }
         } else {
@@ -66,13 +64,13 @@ class StudentAuthController extends Controller
                 'locked_at' => null,
             ], $request->boolean('remember'))) {
                 $request->session()->regenerate();
-                RateLimiter::clear($throttleKey);
+                RateLimiter::clear(Str::transliterate(Str::lower($login)).'|'.$request->ip());
                 $request->user('students')->forceFill(['last_login_at' => now()])->save();
+
                 return redirect()->intended(route('dashboard'));
             }
         }
 
-        RateLimiter::hit($throttleKey, 60);
         throw ValidationException::withMessages(['login' => 'The provided credentials are incorrect or the account is inactive.']);
     }
 
@@ -125,6 +123,7 @@ class StudentAuthController extends Controller
         Auth::guard('students')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('login');
     }
 }

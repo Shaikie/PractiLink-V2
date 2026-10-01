@@ -8,8 +8,10 @@ use App\Models\DocumentType;
 use App\Services\ApplicationDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\File;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class StudentApplicationDocumentController extends Controller
 {
@@ -44,8 +46,13 @@ class StudentApplicationDocumentController extends Controller
         abort_unless(Storage::disk($document->disk)->exists($document->path), 404);
 
         return Storage::disk($document->disk)->response($document->path, $document->original_name, [
-            'Content-Disposition' => 'inline; filename="'.addslashes($document->original_name).'"',
+            'Content-Disposition' => HeaderUtils::makeDisposition(
+                HeaderUtils::DISPOSITION_INLINE,
+                $document->original_name,
+                'document-preview',
+            ),
             'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store, max-age=0',
         ]);
     }
 
@@ -62,9 +69,24 @@ class StudentApplicationDocumentController extends Controller
     {
         abort_unless(Auth::guard('students')->check() && $application->student_id === Auth::guard('students')->id(), 403);
         abort_unless($document->application_id === $application->id, 404);
-        abort_unless($application->isEditable(), 422, 'Documents cannot be removed after submission.');
-        Storage::disk($document->disk)->delete($document->path);
-        $document->delete();
+
+        $path = DB::transaction(function () use ($application, $document): array {
+            $lockedApplication = Application::query()->lockForUpdate()->findOrFail($application->id);
+            abort_unless($lockedApplication->student_id === Auth::guard('students')->id(), 403);
+            abort_unless($lockedApplication->isEditable(), 422, 'Documents cannot be removed after submission.');
+
+            $lockedDocument = ApplicationDocument::query()
+                ->whereKey($document->id)
+                ->where('application_id', $lockedApplication->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $path = [$lockedDocument->disk, $lockedDocument->path];
+            $lockedDocument->delete();
+
+            return $path;
+        });
+
+        Storage::disk($path[0])->delete($path[1]);
 
         return back()->with('success', 'Document removed.');
     }

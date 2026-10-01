@@ -493,7 +493,7 @@
                             formaction="{{ route('admin.workflows.versions.publish', $draft) }}"
                             formmethod="POST"
                             class="btn btn-success"
-                            onclick="return confirm('Publish this workflow? Published versions cannot be edited.')"
+                            data-confirm="Publish this workflow? Published versions cannot be edited."
                         >
                             <i class="fas fa-check mr-1"></i>
                             Publish

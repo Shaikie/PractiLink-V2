@@ -14,15 +14,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class AdminPlacementController extends Controller
 {
-    public function index()
+    public function index(Request $request): View
     {
         return view('admin.placements.index', [
             'placements' => Placement::with(['student', 'organization', 'department', 'application'])
                 ->latest()
                 ->paginate(15),
+            'canManagePlacements' => $request->user()->roles()->where('slug', 'cto')->exists(),
         ]);
     }
 
@@ -152,28 +154,30 @@ class AdminPlacementController extends Controller
         );
 
         DB::transaction(function () use ($placement, $data, $request, $allowedTransitions): void {
-            $placement->refresh();
-            $old = $placement->status;
+            $lockedPlacement = Placement::query()
+                ->lockForUpdate()
+                ->findOrFail($placement->id);
+            $old = $lockedPlacement->status;
             abort_unless(
                 in_array($data['status'], $allowedTransitions[$old] ?? [], true),
                 422,
                 'This placement status transition is no longer allowed.'
             );
 
-            $placement->update(['status' => $data['status']]);
+            $lockedPlacement->update(['status' => $data['status']]);
             PlacementStatusHistory::create([
-                'placement_id' => $placement->id,
+                'placement_id' => $lockedPlacement->id,
                 'from_status' => $old,
-                'to_status' => $placement->status,
+                'to_status' => $lockedPlacement->status,
                 'changed_by' => $request->user()->id,
                 'comment' => $data['comment'] ?? null,
                 'changed_at' => now(),
             ]);
             AuditLogger::record(
                 'placement.status_updated',
-                $placement,
+                $lockedPlacement,
                 ['status' => $old],
-                ['status' => $placement->status],
+                ['status' => $lockedPlacement->status],
             );
         });
 

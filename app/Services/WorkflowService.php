@@ -29,20 +29,38 @@ class WorkflowService
                 ]);
             }
 
-            $definition = WorkflowDefinition::query()
+            $definitions = WorkflowDefinition::query()
                 ->where('is_active', true)
                 ->where('training_type_id', $trainingTypeId)
                 ->with(['versions' => fn ($q) => $q->where('status', 'PUBLISHED')->latest('version')])
                 ->get()
-                ->first(fn ($d) => $d->versions->isNotEmpty());
+                ->filter(fn ($definition) => $definition->versions->isNotEmpty())
+                ->values();
+
+            if ($definitions->count() > 1) {
+                throw ValidationException::withMessages([
+                    'workflow' => 'More than one active workflow is configured for this training type.',
+                ]);
+            }
+
+            $definition = $definitions->first();
 
             if (! $definition) {
-                $definition = WorkflowDefinition::query()
+                $definitions = WorkflowDefinition::query()
                     ->where('is_active', true)
                     ->whereNull('training_type_id')
                     ->with(['versions' => fn ($q) => $q->where('status', 'PUBLISHED')->latest('version')])
                     ->get()
-                    ->first(fn ($d) => $d->versions->isNotEmpty());
+                    ->filter(fn ($definition) => $definition->versions->isNotEmpty())
+                    ->values();
+
+                if ($definitions->count() > 1) {
+                    throw ValidationException::withMessages([
+                        'workflow' => 'More than one active fallback workflow is configured.',
+                    ]);
+                }
+
+                $definition = $definitions->first();
             }
 
             if (! $definition) {
@@ -94,6 +112,12 @@ class WorkflowService
                 'version',
             );
 
+            if ($workflow->completed_at !== null || $workflow->currentStage?->is_terminal) {
+                throw ValidationException::withMessages([
+                    'transition' => 'This workflow is already closed and cannot accept another action.',
+                ]);
+            }
+
             $transition = $this->findTransition($workflow, $action);
 
             if ($transition->requires_comment && blank($comment)) {
@@ -132,20 +156,22 @@ class WorkflowService
 
     public function findTransition(ApplicationWorkflow $workflow, string $action): WorkflowTransition
     {
-        $transition = WorkflowTransition::query()
+        $transitions = WorkflowTransition::query()
             ->where('workflow_version_id', $workflow->workflow_version_id)
             ->where('from_stage_id', $workflow->current_stage_id)
             ->where('action', strtoupper($action))
             ->with(['responsibleRole', 'toStage'])
-            ->first();
+            ->get();
 
-        if (! $transition) {
+        if ($transitions->count() !== 1) {
             throw ValidationException::withMessages([
-                'transition' => 'This action is not configured for the current workflow stage.',
+                'transition' => $transitions->isEmpty()
+                    ? 'This action is not configured for the current workflow stage.'
+                    : 'This workflow stage has multiple transitions for the selected action.',
             ]);
         }
 
-        return $transition;
+        return $transitions->first();
     }
 
     public function canAct(ApplicationWorkflow $workflow, WorkflowTransition $transition, ?User $actor): bool
@@ -186,8 +212,10 @@ class WorkflowService
         }
 
         return $transition->responsibleRole?->slug !== 'hod'
-            || $workflow->application?->department_id
-                && $actor->departments()->whereKey($workflow->application->department_id)->exists();
+            || (
+                $workflow->application?->department_id
+                && $actor->departments()->whereKey($workflow->application->department_id)->exists()
+            );
     }
 
     private function authorizeActor(
@@ -211,13 +239,18 @@ class WorkflowService
         ?User $actor,
         ?string $summary = null,
     ): WorkflowVersion {
-        $next = ((int) $definition->versions()->max('version')) + 1;
+        return DB::transaction(function () use ($definition, $actor, $summary): WorkflowVersion {
+            $lockedDefinition = WorkflowDefinition::query()
+                ->lockForUpdate()
+                ->findOrFail($definition->getKey());
+            $next = ((int) $lockedDefinition->versions()->max('version')) + 1;
 
-        return $definition->versions()->create([
-            'version' => $next,
-            'status' => 'DRAFT',
-            'change_summary' => $summary,
-            'created_by' => $actor?->id,
-        ]);
+            return $lockedDefinition->versions()->create([
+                'version' => $next,
+                'status' => 'DRAFT',
+                'change_summary' => $summary,
+                'created_by' => $actor?->id,
+            ]);
+        });
     }
 }

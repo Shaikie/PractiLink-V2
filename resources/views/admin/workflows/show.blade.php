@@ -45,7 +45,7 @@
         </div>
     </div>
 </div>
-@if($draft)<form method="POST" action="{{ route('admin.workflows.versions.update',$draft) }}" id="workflow-editor">@csrf @method('PUT')
+@if($draft)<form method="POST" action="{{ route('admin.workflows.versions.update',$draft) }}" id="workflow-editor" data-confirm="Save changes to this workflow draft?">@csrf @method('PUT')
     <div class="clay-card mb-4">
         <div class="clay-card-body">
             <div class="d-flex justify-content-between align-items-start mb-4">
@@ -121,7 +121,7 @@
     </div>
     <div class="clay-card">
         <div class="clay-card-footer"><a href="{{ route('admin.workflows.index') }}" class="btn btn-light clay-btn-secondary">Back</a>
-            <div class="d-flex flex-wrap gap-2"><button class="btn btn-primary clay-btn-primary mr-1"><i class="fas fa-save mr-1"></i>Save Draft</button><button formaction="{{ route('admin.workflows.versions.publish',$draft) }}" formmethod="POST" class="btn btn-success" onclick="return confirm('Publish this workflow version? Published versions are immutable.')"><i class="fas fa-check mr-1"></i>Publish Version</button></div>
+            <div class="d-flex flex-wrap gap-2"><button class="btn btn-primary clay-btn-primary mr-1"><i class="fas fa-save mr-1"></i>Save Draft</button><button formaction="{{ route('admin.workflows.versions.publish',$draft) }}" formmethod="POST" class="btn btn-success"><i class="fas fa-check mr-1"></i>Publish Version</button></div>
         </div>
     </div>
 </form>
@@ -135,9 +135,9 @@
         const stageList = document.getElementById('stage-list'),
             transitionList = document.getElementById('transition-list'),
             startSelect = document.getElementById('starting-stage');
-        const roles = @json($roles - > map(fn($r) => ['id' => $r - > id, 'name' => $r - > name]) - > values());
-        const permissions = @json($permissions - > map(fn($p) => ['slug' => $p - > slug, 'name' => $p - > name]) - > values());
-        const actions = @json($actions - > values());
+        const roles = @json($roles -> map(fn($r) => ['id' => $r -> id, 'name' => $r -> name]) -> values());
+        const permissions = @json($permissions -> map(fn($p) => ['slug' => $p -> slug, 'name' => $p -> name]) -> values());
+        const actions = @json($actions -> values());
         const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({
             '&': '&amp;',
             '<': '&lt;',

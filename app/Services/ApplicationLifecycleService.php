@@ -21,10 +21,15 @@ use Illuminate\Validation\ValidationException;
 class ApplicationLifecycleService
 {
     public const ACTION_START_REVIEW = 'START_REVIEW';
+
     public const ACTION_FORWARD = 'FORWARD';
+
     public const ACTION_RETURN = 'RETURN';
+
     public const ACTION_REJECT = 'REJECT';
+
     public const ACTION_ACCEPT = 'ACCEPT';
+
     public const ACTION_COMPLETE_PLACEMENT = 'COMPLETE_PLACEMENT';
 
     private const LIFECYCLE_ACTIONS = [
@@ -101,6 +106,12 @@ class ApplicationLifecycleService
                 ->with('workflow')
                 ->findOrFail($application->id);
 
+            if ($locked->status === 'CANCELLED') {
+                throw ValidationException::withMessages([
+                    'application' => 'Cancelled applications cannot be progressed through the workflow.',
+                ]);
+            }
+
             if (! $locked->workflow) {
                 throw ValidationException::withMessages([
                     'workflow' => 'This application has not been initialized in the workflow.',
@@ -109,6 +120,13 @@ class ApplicationLifecycleService
 
             $transition = $this->workflows->findTransition($locked->workflow, $action);
             $status = strtoupper((string) $transition->result_status);
+            $expectedStatus = $this->expectedResultStatus($action);
+
+            if ($status !== $expectedStatus) {
+                throw ValidationException::withMessages([
+                    'transition' => 'The workflow transition has an invalid result for this action.',
+                ]);
+            }
 
             if (! in_array($status, self::RESULT_STATUSES, true)) {
                 throw ValidationException::withMessages([
@@ -143,7 +161,10 @@ class ApplicationLifecycleService
     public function cancel(Application $application): Application
     {
         return DB::transaction(function () use ($application): Application {
-            $locked = Application::query()->lockForUpdate()->findOrFail($application->id);
+            $locked = Application::query()
+                ->lockForUpdate()
+                ->with('workflow')
+                ->findOrFail($application->id);
 
             if (! in_array($locked->status, ['DRAFT', 'SUBMITTED', 'RETURNED'], true)) {
                 throw ValidationException::withMessages([
@@ -153,6 +174,7 @@ class ApplicationLifecycleService
 
             $old = ['status' => $locked->status];
             $locked->update(['status' => 'CANCELLED']);
+            $locked->workflow?->update(['completed_at' => now()]);
             $updated = $locked->fresh();
 
             AuditLogger::record('application.cancelled', $updated, $old, ['status' => 'CANCELLED']);
@@ -163,7 +185,7 @@ class ApplicationLifecycleService
 
     private function completePlacement(Application $application, User $actor, ?string $comment = null): Application
     {
-        return DB::transaction(function () use ($application, $actor, $comment): Application {
+        $updated = DB::transaction(function () use ($application, $actor, $comment): Application {
             $locked = Application::query()
                 ->lockForUpdate()
                 ->with(['workflow', 'placement'])
@@ -178,6 +200,12 @@ class ApplicationLifecycleService
             if (! $locked->placement) {
                 throw ValidationException::withMessages([
                     'placement' => 'A placement must be allocated before the workflow can be completed.',
+                ]);
+            }
+
+            if (! in_array($locked->placement->status, ['ALLOCATED', 'ACTIVE'], true)) {
+                throw ValidationException::withMessages([
+                    'placement' => 'Only an active or allocated placement can complete the workflow.',
                 ]);
             }
 
@@ -218,9 +246,23 @@ class ApplicationLifecycleService
             return $updated;
         });
 
+        $updated->load('student');
         $updated->student->notify(new ApplicationStatusUpdated($updated, 'PLACED'));
 
         return $updated;
+    }
+
+    private function expectedResultStatus(string $action): string
+    {
+        return match ($action) {
+            self::ACTION_START_REVIEW, self::ACTION_FORWARD => 'UNDER_REVIEW',
+            self::ACTION_RETURN => 'RETURNED',
+            self::ACTION_REJECT => 'REJECTED',
+            self::ACTION_ACCEPT => 'ACCEPTED',
+            default => throw ValidationException::withMessages([
+                'action' => 'Unsupported application lifecycle action.',
+            ]),
+        };
     }
 
     private function assertReadyForSubmission(Application $application): void
@@ -263,13 +305,13 @@ class ApplicationLifecycleService
             ]);
         }
 
-        if ($application->training_start_date->isPast() && !$application->training_start_date->isToday()) {
+        if ($application->training_start_date->isPast() && ! $application->training_start_date->isToday()) {
             throw ValidationException::withMessages([
                 'training_start_date' => 'Training start date cannot be in the past.',
             ]);
         }
 
-        if (!$application->training_end_date->isAfter($application->training_start_date)) {
+        if (! $application->training_end_date->isAfter($application->training_start_date)) {
             throw ValidationException::withMessages([
                 'training_end_date' => 'Training end date must be after the start date.',
             ]);

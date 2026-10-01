@@ -13,9 +13,10 @@
     <meta property="og:image" content="{{ asset('images/og-practilink.svg') }}">
     <meta name="twitter:card" content="summary_large_image">
     <title>PractiLink | Practical Training Platform</title>
+    @fonts
+    @vite(['resources/css/app.css'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
     <link rel="stylesheet" href="{{ asset('css/practilink.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/skeuomorphism.css') }}">
     <script type="application/ld+json">
     {!! json_encode([
         '@context' => 'https://schema.org',
@@ -84,7 +85,7 @@
         </main>
 
         <footer class="pl-auth-footer">
-            <span>© {{ date('Y') }} PractiLink</span>
+            <span>&copy; {{ now()->year }} PractiLink</span>
             <span>Practical training, connected.</span>
         </footer>
     </div>

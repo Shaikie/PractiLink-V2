@@ -36,7 +36,7 @@
                         <td>{{ $window->closes_at->format('d M Y, H:i') }}</td>
                         <td><span class="badge badge-{{ $window->isOpen() ? 'success' : 'primary' }}">{{ $window->isOpen() ? 'Open' : ($window->is_active ? 'Closed' : 'Inactive') }}</span></td>
                         <td class="text-right"><a href="{{ route('admin.application-windows.edit', $window) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                            <form method="POST" action="{{ route('admin.application-windows.destroy', $window) }}" class="d-inline ml-1">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this application window?')">Delete</button></form>
+                            <form method="POST" action="{{ route('admin.application-windows.destroy', $window) }}" class="d-inline ml-1" data-confirm="Delete this application window?">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Delete</button></form>
                         </td>
                     </tr>
                     @endforeach

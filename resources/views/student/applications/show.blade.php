@@ -1,79 +1,264 @@
 @extends('layouts.admin')
-@section('title','Application '.$application->reference_number)
-@section('page_title','Application Details')
-@section('page_description',$application->reference_number)
+
+@section('title', 'Application '.$application->reference_number)
+@section('page_title', 'Application details')
+@section('page_description', $application->reference_number)
+
+@section('page_actions')
+    <div class="d-flex flex-wrap justify-content-end gap-2">
+        @if($application->isEditable())
+            <a href="{{ route('student.applications.edit', $application) }}" class="btn btn-primary">
+                <i class="fas fa-pen" aria-hidden="true"></i> Edit application
+            </a>
+        @endif
+        <a href="{{ route('student.applications.index') }}" class="btn btn-light">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> All applications
+        </a>
+    </div>
+@endsection
+
 @section('content')
-<div class="row">
-    <div class="col-xl-8 mb-3">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title">{{ $application->applicationWindow->name }}</h3><span class="badge badge-primary">{{ str_replace('_',' ',$application->status) }}</span>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3"><small class="text-muted d-block">Reference number</small><strong>{{ $application->reference_number }}</strong></div>
-                    <div class="col-md-6 mb-3"><small class="text-muted d-block">Training type</small><strong>{{ $application->applicationWindow->trainingType->name }}</strong></div>
-                    <div class="col-md-6 mb-3"><small class="text-muted d-block">Training starts</small><strong>{{ $application->training_start_date?->format('d M Y') ?? 'Not set' }}</strong></div>
-                    <div class="col-md-6 mb-3"><small class="text-muted d-block">Training ends</small><strong>{{ $application->training_end_date?->format('d M Y') ?? 'Not set' }}</strong></div>
-                    <div class="col-md-6 mb-3"><small class="text-muted d-block">Submitted</small><strong>{{ $application->submitted_at?->format('d M Y, H:i') ?? 'Not submitted' }}</strong></div>@if($application->workflow?->currentStage)<div class="col-md-6 mb-3"><small class="text-muted d-block">Current workflow stage</small><strong>{{ $application->workflow->currentStage->name }}</strong></div>@endif
-                </div>
-                <hr><small class="text-muted d-block mb-1">Notes</small>
-                <p class="mb-0">{{ $application->notes ?: 'No notes provided.' }}</p>
-            </div>
-            <div class="card-footer d-flex justify-content-between"><a href="{{ route('student.applications.index') }}" class="btn btn-light border"><i class="fas fa-arrow-left mr-1"></i>Back</a>
-                <div>@if($application->isEditable())
-                    <form method="POST" action="{{ route('student.applications.submit',$application) }}" class="d-inline">@csrf<button class="btn btn-success" type="submit">Submit application</button></form>@endif @if(in_array($application->status,['DRAFT','SUBMITTED','RETURNED', 'UNDER_REVIEW'],true))<form method="POST" action="{{ route('student.applications.cancel',$application) }}" class="d-inline ml-2">@csrf<button class="btn btn-outline-danger" type="submit">Cancel</button></form>@endif</div>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Application documents</h3><span class="ml-auto small text-muted">Validated by format, MIME type and size</span>
-            </div>
-            <div class="card-body">@if($application->isEditable())<form method="POST" action="{{ route('student.applications.documents.store',$application) }}" enctype="multipart/form-data" class="mb-4">@csrf<div class="form-row align-items-end">
-                        <div class="form-group col-md-5"><label>Document type</label><select name="document_type_id" class="form-control" required>
-                                <option value="">Select document</option>@foreach($documentTypes as $type)<option value="{{ $type->id }}">{{ $type->name }}{{ $type->is_required?' *':'' }}</option>@endforeach
-                            </select></div>
-                        <div class="form-group col-md-5"><label>File</label><input type="file" name="document" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required><small class="form-text text-muted">The server validates the actual file type, not only the filename.</small></div>
-                        <div class="form-group col-md-2"><button class="btn btn-primary btn-block">Upload</button></div>
+    <x-ui.validation-summary class="mb-3" />
+
+    @php
+        $nextStep = match ($application->status) {
+            'DRAFT' => 'Complete the required information and documents, then submit when ready.',
+            'RETURNED' => 'Review the workflow comments, update your application and submit it again.',
+            'SUBMITTED', 'UNDER_REVIEW' => 'Your application is with the review team. We will notify you when it moves.',
+            'ACCEPTED' => $application->placement ? 'Your placement is ready. Open the placement details below.' : 'Your application was accepted. The placement team will allocate an organization next.',
+            'REJECTED' => 'This application was not approved. Contact the department if you need clarification.',
+            'CANCELLED' => 'This application is closed and no longer requires action.',
+            default => 'Continue completing your application details.',
+        };
+    @endphp
+
+    <div class="row">
+        <div class="col-xl-8 mb-3">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">{{ $application->applicationWindow->name }}</h3>
+                        <p class="mb-0 mt-1 text-muted small">Submitted {{ $application->submitted_at?->format('d M Y, H:i') ?? 'not yet' }}</p>
                     </div>
-                </form>@endif<div class="row">@forelse($application->documents as $document)<div class="col-md-6 mb-3">
-                        <div class="border rounded p-3 h-100">
-                            <div class="d-flex justify-content-between">
-                                <div><strong>{{ $document->documentType->name }}</strong>
-                                    <div class="small text-muted text-truncate" title="{{ $document->original_name }}">{{ $document->original_name }}</div>
-                                </div><span class="badge badge-light align-self-start">{{ number_format($document->size_bytes/1024,0) }} KB</span>
-                            </div>@if($document->isPreviewable())<div class="mt-3 rounded overflow-hidden border" style="height:180px;background:#f8fafc"><iframe src="{{ route('student.applications.documents.preview',[$application,$document]) }}" title="Document preview" style="width:100%;height:100%;border:0"></iframe></div>@else<div class="mt-3 text-center p-4 bg-light rounded"><i class="far fa-file-word fa-2x text-primary"></i>
-                                <div class="small text-muted mt-2">Preview unavailable for this format</div>
-                            </div>@endif<div class="mt-3"><a href="{{ route('student.applications.documents.download',[$application,$document]) }}" class="btn btn-sm btn-outline-primary">Download</a>@if($application->isEditable())<form method="POST" action="{{ route('student.applications.documents.destroy',[$application,$document]) }}" class="d-inline float-right">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">Remove</button></form>@endif</div>
+                    <x-ui.status-badge :status="$application->status" class="ml-auto" />
+                </div>
+                <div class="card-body">
+                    <div class="pl-next-callout mb-4">
+                        <span><i class="fas fa-compass" aria-hidden="true"></i></span>
+                        <div>
+                            <strong>What happens next</strong>
+                            <p>{{ $nextStep }}</p>
                         </div>
-                    </div>@empty<div class="col-12 text-muted">No documents uploaded yet.</div>@endforelse</div>
+                    </div>
+
+                    <dl class="pl-detail-grid mb-0">
+                        <div class="pl-detail-item">
+                            <dt>Reference number</dt>
+                            <dd>{{ $application->reference_number }}</dd>
+                        </div>
+                        <div class="pl-detail-item">
+                            <dt>Training type</dt>
+                            <dd>{{ $application->applicationWindow->trainingType->name }}</dd>
+                        </div>
+                        <div class="pl-detail-item">
+                            <dt>Training starts</dt>
+                            <dd>{{ $application->training_start_date?->format('d M Y') ?? 'Not set' }}</dd>
+                        </div>
+                        <div class="pl-detail-item">
+                            <dt>Training ends</dt>
+                            <dd>{{ $application->training_end_date?->format('d M Y') ?? 'Not set' }}</dd>
+                        </div>
+                        <div class="pl-detail-item">
+                            <dt>Review department</dt>
+                            <dd>{{ $application->department?->name ?? 'Not assigned' }}</dd>
+                        </div>
+                        <div class="pl-detail-item">
+                            <dt>Current workflow stage</dt>
+                            <dd>{{ $application->workflow?->currentStage?->name ?? 'Not started' }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="card-footer pl-placement-actions">
+                    <a href="{{ route('student.applications.index') }}" class="btn btn-light">
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+                    </a>
+                    <div class="d-flex flex-wrap justify-content-end gap-2">
+                        @if(in_array($application->status, ['DRAFT', 'SUBMITTED', 'RETURNED'], true))
+                            <form method="POST" action="{{ route('student.applications.cancel', $application) }}" data-confirm="Cancel this application? This action cannot be undone.">
+                                @csrf
+                                <button class="btn btn-outline-danger" type="submit">Cancel application</button>
+                            </form>
+                        @endif
+                        @if($application->isEditable())
+                            <form method="POST" action="{{ route('student.applications.submit', $application) }}" data-confirm="Submit this application for review? You will not be able to edit it unless it is returned.">
+                                @csrf
+                                <button class="btn btn-success" type="submit">
+                                    <i class="fas fa-paper-plane" aria-hidden="true"></i> Submit application
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Application narrative</h3>
+                        <p class="mb-0 mt-1 text-muted small">Information submitted with this application</p>
+                    </div>
+                </div>
+                <div class="card-body pl-section-copy">
+                    <h6>Reason for application</h6>
+                    <p>{{ \Illuminate\Support\Str::of($application->reason_for_application ?: 'Not provided.')->stripTags()->toString() }}</p>
+                    <h6>Areas of interest</h6>
+                    <p>{{ \Illuminate\Support\Str::of($application->interests ?: 'Not provided.')->stripTags()->toString() }}</p>
+                    <h6>Expected objectives</h6>
+                    <p>{{ \Illuminate\Support\Str::of($application->expected_objectives ?: 'Not provided.')->stripTags()->toString() }}</p>
+                    <h6>Additional notes</h6>
+                    <p>{{ \Illuminate\Support\Str::of($application->notes ?: 'No additional notes were provided.')->stripTags()->toString() }}</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title">Application documents</h3>
+                        <p class="mb-0 mt-1 text-muted small">PDF, JPG, PNG and Word files up to the configured size limit</p>
+                    </div>
+                    <span class="badge badge-light ml-auto">{{ $application->documents->count() }} uploaded</span>
+                </div>
+                <div class="card-body">
+                    @if($application->isEditable())
+                        <form method="POST" action="{{ route('student.applications.documents.store', $application) }}" enctype="multipart/form-data" class="pl-document-upload mb-4">
+                            @csrf
+                            <div class="form-row align-items-end">
+                                <div class="form-group col-md-4 mb-md-0">
+                                    <label for="document_type_id">Document type</label>
+                                    <select id="document_type_id" name="document_type_id" class="form-control" required>
+                                        <option value="">Select document</option>
+                                        @foreach($documentTypes as $type)
+                                            <option value="{{ $type->id }}" @selected(old('document_type_id') == $type->id)>
+                                                {{ $type->name }}{{ $type->is_required ? ' (required)' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="form-group col-md-5 mb-md-0">
+                                    <label for="document">File</label>
+                                    <input type="file" id="document" name="document" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
+                                </div>
+                                <div class="form-group col-md-3 mb-md-0">
+                                    <button class="btn btn-primary btn-block" type="submit">
+                                        <i class="fas fa-cloud-arrow-up" aria-hidden="true"></i> Upload document
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted d-block mt-2">The server validates the actual file content before storing it privately.</small>
+                        </form>
+                    @endif
+
+                    @if($application->documents->isEmpty())
+                        <x-ui.empty-state
+                            icon="fa-folder-open"
+                            title="No documents uploaded"
+                            message="Upload the required supporting documents before submitting this application."
+                            compact
+                        />
+                    @else
+                        <div class="pl-document-grid">
+                            @foreach($application->documents as $document)
+                                <article class="pl-document-card">
+                                    <div class="pl-document-heading">
+                                        <span class="pl-document-icon"><i class="far fa-file-alt" aria-hidden="true"></i></span>
+                                        <div class="pl-document-copy">
+                                            <strong>{{ $document->documentType->name }}</strong>
+                                            <small title="{{ $document->original_name }}">{{ $document->original_name }}</small>
+                                            <small>{{ number_format($document->size_bytes / 1024, 1) }} KB</small>
+                                        </div>
+                                    </div>
+
+                                    @if($document->isPreviewable())
+                                        <iframe class="pl-document-preview" src="{{ route('student.applications.documents.preview', [$application, $document]) }}" title="Preview of {{ $document->documentType->name }}" loading="lazy"></iframe>
+                                    @else
+                                        <div class="pl-document-placeholder">
+                                            <i class="far fa-file-word fa-2x" aria-hidden="true"></i>
+                                            <span class="mt-2">Preview is unavailable for this file type.</span>
+                                        </div>
+                                    @endif
+
+                                    <div class="pl-document-actions">
+                                        <a href="{{ route('student.applications.documents.download', [$application, $document]) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download" aria-hidden="true"></i> Download
+                                        </a>
+                                        @if($application->isEditable())
+                                            <form method="POST" action="{{ route('student.applications.documents.destroy', [$application, $document]) }}" data-confirm="Remove this document?">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-xl-4 mb-3">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Document requirements</h3>
+
+        <div class="col-xl-4 mb-3">
+            <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Document checklist</h3></div>
+                <div class="card-body py-2">
+                    @foreach($documentTypes as $type)
+                        @php($isUploaded = $application->documents->contains('document_type_id', $type->id))
+                        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+                            <span class="small">{{ $type->name }}</span>
+                            <x-ui.status-badge
+                                :status="$isUploaded ? 'Uploaded' : ($type->is_required ? 'Required' : 'Optional')"
+                                :tone="$isUploaded ? 'success' : ($type->is_required ? 'warning' : 'neutral')"
+                            />
+                        </div>
+                    @endforeach
+                    <p class="small text-muted mb-0 mt-3">All required documents must be uploaded before submission.</p>
+                </div>
             </div>
-            <div class="card-body">@foreach($documentTypes as $type)<div class="d-flex justify-content-between border-bottom py-2"><span>{{ $type->name }}</span><span class="badge badge-{{ $application->documents->contains('document_type_id',$type->id)?'success':($type->is_required?'warning':'light') }}">{{ $application->documents->contains('document_type_id',$type->id)?'Uploaded':($type->is_required?'Required':'Optional') }}</span></div>@endforeach<small class="text-muted d-block mt-3">Required documents must be uploaded before submission.</small></div>
+
+            @if($application->placement)
+                <div class="card mb-3">
+                    <div class="card-header"><h3 class="card-title">Placement details</h3></div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <span class="pl-document-icon"><i class="fas fa-building" aria-hidden="true"></i></span>
+                            <div>
+                                <strong class="d-block">{{ $application->placement->organization->name }}</strong>
+                                <span class="small text-muted">{{ $application->placement->location ?: 'Location available from the placement office' }}</span>
+                            </div>
+                        </div>
+                        <dl class="pl-detail-grid mb-3">
+                            <div class="pl-detail-item"><dt>Starts</dt><dd>{{ $application->placement->start_date->format('d M Y') }}</dd></div>
+                            <div class="pl-detail-item"><dt>Ends</dt><dd>{{ $application->placement->end_date->format('d M Y') }}</dd></div>
+                        </dl>
+                        <x-ui.status-badge :status="$application->placement->status" />
+                        @if($application->placement->letters->isNotEmpty())
+                            <a href="{{ route('student.placements.letter', $application->placement->letters->sortByDesc('version')->first()) }}" target="_blank" rel="noopener" class="btn btn-primary btn-block mt-3">
+                                <i class="fas fa-file-pdf" aria-hidden="true"></i> View placement letter
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            @if($application->workflow)
+                <div class="card">
+                    <div class="card-header"><h3 class="card-title">Review timeline</h3></div>
+                    <div class="card-body">
+                        <x-ui.workflow-timeline :events="$application->workflow->history ?? collect()" />
+                    </div>
+                </div>
+            @endif
         </div>
-        @if($application->placement)<div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Placement</h3>
-            </div>
-            <div class="card-body">
-                <p><strong>{{ $application->placement->organization->name }}</strong></p>
-                <p class="mb-2">{{ $application->placement->start_date->format('d M Y') }} - {{ $application->placement->end_date->format('d M Y') }}</p>@if($application->placement->letters->isNotEmpty())<a href="{{ route('student.placements.letter',$application->placement->letters->sortByDesc('version')->first()) }}" target="_blank" class="btn btn-primary btn-block">View placement letter</a>@endif
-            </div>
-        </div>@endif
-        @if($application->workflow)<div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Workflow history</h3>
-            </div>
-            <div class="card-body">@foreach($application->workflow->history->sortBy('acted_at') as $event)<div class="mb-3"><strong>{{ $event->toStage?->name ?? 'Started' }}</strong>
-                    <div class="small text-muted">{{ $event->acted_at?->format('d M Y, H:i') }}</div>@if($event->comment)<div class="small mt-1">{{ $event->comment }}</div>@endif
-                </div>@endforeach</div>
-        </div>@endif
     </div>
-</div>
 @endsection

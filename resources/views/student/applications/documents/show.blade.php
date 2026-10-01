@@ -8,7 +8,7 @@
     <div class="col-xl-8 mb-3">
         <div class="card h-100"><div class="card-header"><strong>{{ $document->original_name }}</strong></div><div class="card-body">
             @if($document->isPreviewable())
-                <iframe class="skeuo-document-preview" src="{{ route('student.applications.documents.preview',[$application,$document]) }}" title="Document preview"></iframe>
+                <iframe class="skeuo-document-preview" src="{{ route('student.applications.documents.preview',[$application,$document]) }}" title="Document preview" loading="lazy"></iframe>
             @else
                 <div class="skeuo-document-card text-center py-5"><i class="fas fa-file-word fa-3x mb-3"></i><h3>Preview unavailable</h3><p class="text-muted">This file type cannot be rendered safely in the browser. Download it to open it with the appropriate application.</p><a href="{{ route('student.applications.documents.download',[$application,$document]) }}" class="btn btn-primary"><i class="fas fa-download mr-1"></i> Download document</a></div>
             @endif

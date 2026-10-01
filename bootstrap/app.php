@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AuthenticateAny;
+use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\RedirectAuthenticated;
 use Illuminate\Foundation\Application;
@@ -16,16 +17,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             Route::middleware('web')->group(base_path('routes/auth.php'));
-            Route::middleware(['web', 'auth.any'])->group(base_path('routes/dashboard.php'));
-            Route::middleware(['web', 'auth:web'])->group(base_path('routes/profile.php'));
-            Route::middleware(['web', 'auth:students'])->group(base_path('routes/student.php'));
-            Route::middleware(['web', 'auth.any'])->group(base_path('routes/notifications.php'));
-            Route::middleware(['web', 'auth:web'])->prefix('admin')->name('admin.')->group(base_path('routes/admin.php'));
+            Route::middleware(['web', 'auth.any', 'account.active'])->group(base_path('routes/dashboard.php'));
+            Route::middleware(['web', 'auth:web', 'account.active'])->group(base_path('routes/profile.php'));
+            Route::middleware(['web', 'auth:students', 'account.active'])->group(base_path('routes/student.php'));
+            Route::middleware(['web', 'auth.any', 'account.active'])->group(base_path('routes/notifications.php'));
+            Route::middleware(['web', 'auth:web', 'account.active'])->prefix('admin')->name('admin.')->group(base_path('routes/admin.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'auth.any' => AuthenticateAny::class,
+            'account.active' => EnsureAccountIsActive::class,
             'guest.any' => RedirectAuthenticated::class,
             'permission' => EnsurePermission::class,
         ]);

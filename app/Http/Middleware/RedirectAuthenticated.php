@@ -11,7 +11,13 @@ class RedirectAuthenticated
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::guard('web')->check() || Auth::guard('students')->check()) {
+        $webUser = Auth::guard('web')->user();
+        $student = Auth::guard('students')->user();
+        $activeAccount = collect([$webUser, $student])->contains(
+            fn ($user): bool => $user !== null && $user->is_active && $user->locked_at === null,
+        );
+
+        if ($activeAccount) {
             return redirect()->route('dashboard');
         }
 

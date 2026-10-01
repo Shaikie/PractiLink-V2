@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Organization;
 use App\Models\User;
 use App\Notifications\ApplicationStatusUpdated;
+use App\Services\ApplicationLifecycleService;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +82,37 @@ class WorkflowAuthorizationTest extends TestCase
             ->get(route('admin.applications.show', $application))
             ->assertOk()
             ->assertSee($application->reference_number);
+    }
+
+    public function test_cancelled_application_cannot_be_advanced_by_staff(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $application = Application::where('reference_number', 'like', 'DEMO-PT-%')->firstOrFail();
+        $historyCount = $application->workflow->history()->count();
+
+        app(ApplicationLifecycleService::class)->cancel($application);
+
+        $this->actAs('secretary.demo@practilink.test')
+            ->post(route('admin.applications.action', $application), ['action' => 'START_REVIEW'])
+            ->assertSessionHasErrors('application');
+
+        $application->refresh()->load('workflow.history');
+        $this->assertSame('CANCELLED', $application->status);
+        $this->assertCount($historyCount, $application->workflow->history);
+    }
+
+    public function test_staff_cannot_override_a_transition_result_status(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $application = Application::where('reference_number', 'like', 'DEMO-PT-%')->firstOrFail();
+        $transition = $application->workflow->version->transitions()->where('action', 'START_REVIEW')->firstOrFail();
+        $transition->update(['result_status' => 'REJECTED']);
+
+        $this->actAs('secretary.demo@practilink.test')
+            ->post(route('admin.applications.action', $application), ['action' => 'START_REVIEW'])
+            ->assertSessionHasErrors('transition');
+
+        $this->assertSame('SUBMITTED', $application->fresh()->status);
     }
 
     private function actAs(string $email): static

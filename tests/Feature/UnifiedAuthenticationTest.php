@@ -8,6 +8,7 @@ use Database\Seeders\ReferenceDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class UnifiedAuthenticationTest extends TestCase
@@ -73,6 +74,65 @@ class UnifiedAuthenticationTest extends TestCase
         $response->assertRedirect(route('login'));
         $this->assertDatabaseHas('students', ['email' => 'new.student@example.test']);
         $this->assertDatabaseMissing('users', ['email' => 'new.student@example.test']);
+    }
+
+    public function test_repeated_failed_login_attempts_are_rate_limited(): void
+    {
+        foreach (range(1, 5) as $attempt) {
+            $this->post(route('login'), [
+                'login' => 'missing@example.test',
+                'password' => 'incorrect-password',
+            ])->assertSessionHasErrors('login');
+        }
+
+        $this->post(route('login'), [
+            'login' => 'missing@example.test',
+            'password' => 'incorrect-password',
+        ])->assertTooManyRequests();
+    }
+
+    public function test_deactivated_student_session_is_rejected_on_the_next_request(): void
+    {
+        $student = Student::factory()->create(['is_active' => true]);
+        $this->actingAs($student, 'students');
+        $student->update(['is_active' => false]);
+
+        $this->get(route('dashboard'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHasErrors('login');
+        $this->assertGuest('students');
+    }
+
+    public function test_deactivated_staff_session_is_rejected_on_the_next_request(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+        $this->actingAs($user, 'web');
+        $user->update(['is_active' => false]);
+
+        $this->get(route('dashboard'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHasErrors('login');
+        $this->assertGuest('web');
+    }
+
+    public function test_notification_read_action_requires_post_and_marks_only_the_owned_notification(): void
+    {
+        $student = Student::factory()->create();
+        $notification = $student->notifications()->create([
+            'id' => (string) Str::uuid(),
+            'type' => 'App\\Notifications\\TestNotification',
+            'data' => ['title' => 'Status update', 'message' => 'Your application moved forward.'],
+        ]);
+
+        $this->actingAs($student, 'students')
+            ->get(route('notifications.read', $notification->id))
+            ->assertMethodNotAllowed();
+
+        $this->actingAs($student, 'students')
+            ->post(route('notifications.read', $notification->id))
+            ->assertRedirect();
+
+        $this->assertNotNull($notification->fresh()->read_at);
     }
 
     public function test_inactive_student_cannot_login(): void

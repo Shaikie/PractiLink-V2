@@ -6,10 +6,13 @@ use App\Models\Course;
 use App\Models\Institution;
 use App\Models\Nationality;
 use App\Models\StudyLevel;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StudentProfileController extends Controller
 {
@@ -45,6 +48,13 @@ class StudentProfileController extends Controller
             'study_level_id' => ['required', 'exists:study_levels,id'],
         ]);
 
+        $validated['email'] = strtolower(trim($validated['email']));
+        if (User::where('email', $validated['email'])->exists()) {
+            throw ValidationException::withMessages([
+                'email' => 'That email address is already registered to a staff account.',
+            ]);
+        }
+
         $student->update($validated);
 
         return back()->with('success', 'Student profile updated successfully.');
@@ -65,7 +75,10 @@ class StudentProfileController extends Controller
             ]);
         }
 
-        $student->update(['password' => $validated['password']]);
+        $student->update([
+            'password' => $validated['password'],
+            'remember_token' => Str::random(60),
+        ]);
 
         return back()->with('success', 'Password changed successfully.');
     }

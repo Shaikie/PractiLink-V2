@@ -13,6 +13,7 @@ class NotificationController extends Controller
 
         return view('notifications.index', [
             'notifications' => $account->notifications()->latest()->paginate(15),
+            'unreadCount' => $account->unreadNotifications()->count(),
         ]);
     }
 
