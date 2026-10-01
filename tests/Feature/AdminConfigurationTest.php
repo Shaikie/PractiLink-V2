@@ -21,6 +21,58 @@ class AdminConfigurationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_authorized_staff_can_open_a_reference_data_edit_page(): void
+    {
+        $administrator = $this->administrator();
+        $department = Department::create([
+            'name' => 'Computer Science',
+            'code' => 'CS',
+        ]);
+
+        $this->actingAs($administrator)
+            ->get(route('admin.reference-data.departments.edit', $department))
+            ->assertOk()
+            ->assertSee('Edit department')
+            ->assertSee('Computer Science')
+            ->assertSee('CS');
+    }
+
+    public function test_reference_data_edit_page_can_update_a_record(): void
+    {
+        $administrator = $this->administrator();
+        $department = Department::create([
+            'name' => 'Computer Science',
+            'code' => 'CS',
+        ]);
+
+        $this->actingAs($administrator)
+            ->put(route('admin.reference-data.departments.update', $department), [
+                'name' => 'Computing',
+                'code' => 'COMP',
+            ])
+            ->assertRedirect(route('admin.reference-data.departments.index'));
+
+        $this->assertDatabaseHas('departments', [
+            'id' => $department->id,
+            'name' => 'Computing',
+            'code' => 'COMP',
+        ]);
+    }
+
+    public function test_reference_data_navigation_is_grouped_by_related_configuration(): void
+    {
+        $this->actingAs($this->administrator())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Academic setup')
+            ->assertSee('Training setup')
+            ->assertSee('Institutions &amp; identity', false)
+            ->assertSee('Training tracking')
+            ->assertSee(route('admin.reference-data.departments.index'), false)
+            ->assertSee(route('admin.reference-data.courses.index'), false)
+            ->assertSee(route('admin.reference-data.study-levels.index'), false);
+    }
+
     public function test_authorized_staff_can_add_and_update_reference_data(): void
     {
         $this->actingAs($this->administrator())
