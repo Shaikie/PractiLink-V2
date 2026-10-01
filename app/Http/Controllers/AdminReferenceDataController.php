@@ -170,7 +170,7 @@ class AdminReferenceDataController extends Controller
         ]);
     }
 
-    public function edit(string $type, string $record): View
+    public function edit(string $record, string $type): View
     {
         $resource = $this->resource($type);
         $recordModel = $resource['model']::findOrFail($record);
@@ -205,7 +205,7 @@ class AdminReferenceDataController extends Controller
 
         AuditLogger::record($type.'.updated', $recordModel, $oldValues, $recordModel->fresh()->toArray());
 
-        return back()->with('success', ucfirst($resource['singular']).' updated successfully.');
+        return redirect()->route('admin.reference-data.'.$type.'.index')->with('success', ucfirst($resource['singular']).' updated successfully.');
     }
 
     /**
