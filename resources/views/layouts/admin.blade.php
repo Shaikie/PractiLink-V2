@@ -170,12 +170,124 @@
                             @if($appPermissions->contains('users.manage') || $appPermissions->contains('organizations.manage') || $appPermissions->contains('students.manage'))
                                 <li class="nav-header">Configuration</li>
                                 @if($appPermissions->contains('users.manage'))
-                                    <x-layouts.sidebar-link
-                                        :route="route('admin.reference-data.index')"
-                                        pattern="admin.reference-data.*"
-                                        icon="fa-solid fa-sliders-h"
-                                        label="Reference data"
-                                    />
+                                    @php
+                                        $academicReferenceDataActive = request()->routeIs(
+                                            'admin.reference-data.departments.*',
+                                            'admin.reference-data.courses.*',
+                                            'admin.reference-data.study-levels.*',
+                                            'admin.reference-data.specializations.*'
+                                        );
+                                        $trainingReferenceDataActive = request()->routeIs(
+                                            'admin.reference-data.training-types.*',
+                                            'admin.reference-data.document-types.*'
+                                        );
+                                        $identityReferenceDataActive = request()->routeIs(
+                                            'admin.reference-data.institutions.*',
+                                            'admin.reference-data.nationalities.*'
+                                        );
+                                        $trackingReferenceDataActive = request()->routeIs(
+                                            'admin.reference-data.training-report-statuses.*',
+                                            'admin.reference-data.training-completion-statuses.*'
+                                        );
+                                    @endphp
+
+                                    <li class="nav-header">Reference data</li>
+
+                                    <li class="nav-item has-treeview {{ $academicReferenceDataActive ? 'menu-open' : '' }}">
+                                        <a href="#" class="nav-link {{ $academicReferenceDataActive ? 'active' : '' }}">
+                                            <i class="nav-icon fas fa-graduation-cap" aria-hidden="true"></i>
+                                            <p>Academic setup <i class="right fas fa-angle-left" aria-hidden="true"></i></p>
+                                        </a>
+                                        <ul class="nav nav-treeview">
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.departments.index')"
+                                                pattern="admin.reference-data.departments.*"
+                                                icon="fa-building"
+                                                label="Departments"
+                                            />
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.courses.index')"
+                                                pattern="admin.reference-data.courses.*"
+                                                icon="fa-book"
+                                                label="Courses"
+                                            />
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.study-levels.index')"
+                                                pattern="admin.reference-data.study-levels.*"
+                                                icon="fa-layer-group"
+                                                label="Study levels"
+                                            />
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.specializations.index')"
+                                                pattern="admin.reference-data.specializations.*"
+                                                icon="fa-stream"
+                                                label="Specializations"
+                                            />
+                                        </ul>
+                                    </li>
+
+                                    <li class="nav-item has-treeview {{ $trainingReferenceDataActive ? 'menu-open' : '' }}">
+                                        <a href="#" class="nav-link {{ $trainingReferenceDataActive ? 'active' : '' }}">
+                                            <i class="nav-icon fas fa-briefcase" aria-hidden="true"></i>
+                                            <p>Training setup <i class="right fas fa-angle-left" aria-hidden="true"></i></p>
+                                        </a>
+                                        <ul class="nav nav-treeview">
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.training-types.index')"
+                                                pattern="admin.reference-data.training-types.*"
+                                                icon="fa-briefcase"
+                                                label="Training types"
+                                            />
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.document-types.index')"
+                                                pattern="admin.reference-data.document-types.*"
+                                                icon="fa-file-alt"
+                                                label="Document types"
+                                            />
+                                        </ul>
+                                    </li>
+
+                                    <li class="nav-item has-treeview {{ $identityReferenceDataActive ? 'menu-open' : '' }}">
+                                        <a href="#" class="nav-link {{ $identityReferenceDataActive ? 'active' : '' }}">
+                                            <i class="nav-icon fas fa-users" aria-hidden="true"></i>
+                                            <p>Institutions and identity <i class="right fas fa-angle-left" aria-hidden="true"></i></p>
+                                        </a>
+                                        <ul class="nav nav-treeview">
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.institutions.index')"
+                                                pattern="admin.reference-data.institutions.*"
+                                                icon="fa-university"
+                                                label="Institutions"
+                                            />
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.nationalities.index')"
+                                                pattern="admin.reference-data.nationalities.*"
+                                                icon="fa-globe-africa"
+                                                label="Nationalities"
+                                            />
+                                        </ul>
+                                    </li>
+
+                                    <li class="nav-item has-treeview {{ $trackingReferenceDataActive ? 'menu-open' : '' }}">
+                                        <a href="#" class="nav-link {{ $trackingReferenceDataActive ? 'active' : '' }}">
+                                            <i class="nav-icon fas fa-clipboard-check" aria-hidden="true"></i>
+                                            <p>Training tracking <i class="right fas fa-angle-left" aria-hidden="true"></i></p>
+                                        </a>
+                                        <ul class="nav nav-treeview">
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.training-report-statuses.index')"
+                                                pattern="admin.reference-data.training-report-statuses.*"
+                                                icon="fa-clipboard-check"
+                                                label="Report statuses"
+                                            />
+                                            <x-layouts.sidebar-link
+                                                :route="route('admin.reference-data.training-completion-statuses.index')"
+                                                pattern="admin.reference-data.training-completion-statuses.*"
+                                                icon="fa-flag-checkered"
+                                                label="Completion statuses"
+                                            />
+                                        </ul>
+                                    </li>
                                 @endif
                                 @if($appPermissions->contains('organizations.manage'))
                                     <x-layouts.sidebar-link

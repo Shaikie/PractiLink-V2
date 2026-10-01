@@ -4,6 +4,12 @@
 @section('page_title', $resource['title'])
 @section('page_description', $resource['description'])
 
+@section('page_actions')
+    <a href="{{ route('admin.reference-data.index') }}" class="btn btn-light">
+        <i class="fas fa-arrow-left mr-1" aria-hidden="true"></i> Reference data
+    </a>
+@endsection
+
 @section('content')
     <x-ui.validation-summary class="mb-3" />
 
@@ -63,7 +69,7 @@
                         @endif
                     </div>
                     <div class="card-footer">
-                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-plus" aria-hidden="true"></i> Add {{ $resource['singular'] }}</button>
+                        <button type="submit" class="btn btn-primary w-100"><i class="fas fa-plus mr-1" aria-hidden="true"></i> Add {{ $resource['singular'] }}</button>
                     </div>
                 </form>
             </div>
@@ -125,56 +131,9 @@
                                             </td>
                                         @endforeach
                                         <td class="text-right">
-                                            <button class="btn btn-sm btn-light" type="button" data-toggle="collapse" data-target="#edit-{{ $resourceType }}-{{ $record->id }}" aria-expanded="false">Edit</button>
-                                        </td>
-                                    </tr>
-                                    <tr class="collapse" id="edit-{{ $resourceType }}-{{ $record->id }}">
-                                        <td colspan="{{ count($resource['columns']) + 1 }}">
-                                            <form method="POST" action="{{ route('admin.reference-data.'.$resourceType.'.update', $record) }}" class="pl-inline-edit-form">
-                                                @csrf
-                                                @method('PUT')
-                                                <div class="form-row">
-                                                    <div class="form-group col-md-4">
-                                                        <label for="edit-name-{{ $record->id }}">Name</label>
-                                                        <input id="edit-name-{{ $record->id }}" name="name" value="{{ old('name', $record->name) }}" class="form-control" required>
-                                                    </div>
-                                                    <div class="form-group col-md-3">
-                                                        <label for="edit-code-{{ $record->id }}">Code</label>
-                                                        <input id="edit-code-{{ $record->id }}" name="code" value="{{ old('code', $record->code) }}" class="form-control" @required($resource['code_required']) @if($resource['form'] === 'nationality') maxlength="3" @endif>
-                                                    </div>
-                                                    @if($resource['form'] === 'training-type')
-                                                        <div class="form-group col-md-5">
-                                                            <label for="edit-description-{{ $record->id }}">Description</label>
-                                                            <input id="edit-description-{{ $record->id }}" name="description" value="{{ old('description', $record->description) }}" class="form-control">
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                                @if($resource['form'] === 'document-type')
-                                                    <div class="form-row">
-                                                        <div class="form-group col-md-4">
-                                                            <label for="edit-extensions-{{ $record->id }}">Allowed extensions</label>
-                                                            <input id="edit-extensions-{{ $record->id }}" name="allowed_extensions" value="{{ old('allowed_extensions', implode(', ', $record->allowed_extensions ?? [])) }}" class="form-control">
-                                                        </div>
-                                                        <div class="form-group col-md-4">
-                                                            <label for="edit-mime-{{ $record->id }}">Allowed MIME types</label>
-                                                            <input id="edit-mime-{{ $record->id }}" name="allowed_mime_types" value="{{ old('allowed_mime_types', implode(', ', $record->allowed_mime_types ?? [])) }}" class="form-control">
-                                                        </div>
-                                                        <div class="form-group col-md-2">
-                                                            <label for="edit-min-{{ $record->id }}">Min KB</label>
-                                                            <input id="edit-min-{{ $record->id }}" type="number" name="min_size_kb" value="{{ old('min_size_kb', $record->min_size_kb) }}" class="form-control" min="1" required>
-                                                        </div>
-                                                        <div class="form-group col-md-2">
-                                                            <label for="edit-max-{{ $record->id }}">Max KB</label>
-                                                            <input id="edit-max-{{ $record->id }}" type="number" name="max_size_kb" value="{{ old('max_size_kb', $record->max_size_kb) }}" class="form-control" min="1" max="102400" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex flex-wrap gap-3 mb-3">
-                                                        <div class="form-check"><input id="edit-required-{{ $record->id }}" type="checkbox" name="is_required" value="1" class="form-check-input" @checked($record->is_required)><label class="form-check-label" for="edit-required-{{ $record->id }}">Required</label></div>
-                                                        <div class="form-check"><input id="edit-active-{{ $record->id }}" type="checkbox" name="is_active" value="1" class="form-check-input" @checked($record->is_active)><label class="form-check-label" for="edit-active-{{ $record->id }}">Active</label></div>
-                                                    </div>
-                                                @endif
-                                                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save" aria-hidden="true"></i> Save changes</button>
-                                            </form>
+                                            <a href="{{ route('admin.reference-data.'.$resourceType.'.edit', $record) }}" class="btn btn-sm btn-light">
+                                                <i class="fas fa-pen mr-1" aria-hidden="true"></i> Edit
+                                            </a>
                                         </td>
                                     </tr>
                                 @endforeach

@@ -33,7 +33,7 @@ body {
 }
 
 .main-sidebar {
-    background: linear-gradient(180deg, var(--pl-blue-900) 0%, #172554 100%);
+    background: var(--pl-blue-900);
 }
 
 .brand-link {
@@ -185,10 +185,7 @@ body {
 .pl-auth-page {
     min-height: 100vh;
     margin: 0;
-    background:
-        radial-gradient(circle at 8% 8%, rgba(37, 99, 235, .09), transparent 28rem),
-        radial-gradient(circle at 94% 80%, rgba(22, 163, 74, .08), transparent 24rem),
-        #f8fafc;
+    background: #f8fafc;
 }
 
 .pl-auth-shell {
@@ -231,7 +228,7 @@ body {
     justify-content: center;
     border-radius: 11px;
     color: #fff;
-    background: linear-gradient(135deg, var(--pl-blue-600), var(--pl-green-600));
+    background: var(--pl-blue-600);
     box-shadow: 0 8px 20px rgba(37, 99, 235, .22);
     font-size: 1rem;
     letter-spacing: 0;
@@ -289,7 +286,7 @@ body {
     width: 26px;
     height: 3px;
     border-radius: 10px;
-    background: linear-gradient(90deg, var(--pl-blue-600), var(--pl-green-500));
+    background: var(--pl-blue-600);
 }
 
 .pl-hero-copy h1 {
@@ -448,7 +445,7 @@ body {
     position: absolute;
     inset: 0 0 auto;
     height: 4px;
-    background: linear-gradient(90deg, var(--pl-blue-600), var(--pl-green-500));
+    background: var(--pl-blue-600);
 }
 
 .pl-login-card-top {
@@ -599,7 +596,7 @@ body {
     color: #fff;
     border: 0;
     border-radius: 9px;
-    background: linear-gradient(135deg, var(--pl-blue-600), var(--pl-blue-700));
+    background: var(--pl-blue-600);
     font-size: .81rem;
     font-weight: 800;
     box-shadow: 0 8px 18px rgba(37,99,235,.20);
@@ -609,7 +606,7 @@ body {
 .pl-btn-primary:hover,
 .pl-btn-primary:focus {
     color: #fff;
-    background: linear-gradient(135deg, var(--pl-blue-700), var(--pl-blue-900));
+    background: var(--pl-blue-700);
     box-shadow: 0 10px 22px rgba(37,99,235,.27);
     transform: translateY(-1px);
 }
@@ -921,7 +918,7 @@ body.pl-app-shell textarea:focus-visible,
     border: 1px solid var(--pl-blue-100);
     border-radius: .7rem;
     color: var(--pl-blue-700);
-    background: linear-gradient(145deg, var(--pl-blue-50), #fff);
+    background: var(--pl-blue-50);
     font-size: .72rem;
     font-weight: 800;
     letter-spacing: .03em;
@@ -1021,7 +1018,7 @@ body.pl-app-shell textarea:focus-visible,
 .main-sidebar {
     width: var(--pl-sidebar-width) !important;
     border-right: 0 !important;
-    background: linear-gradient(180deg, #102a4c 0%, #0b1f38 100%) !important;
+    background: #102a4c !important;
     box-shadow: 8px 0 28px rgba(15, 23, 42, .08) !important;
 }
 
