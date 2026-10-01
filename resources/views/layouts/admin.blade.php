@@ -96,7 +96,7 @@
                 </div>
 
                 <nav class="mt-2" aria-label="Workspace navigation">
-                    <ul class="nav nav-pills nav-sidebar flex-column">
+                    <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview">
                         <x-layouts.sidebar-link
                             :route="route('dashboard')"
                             pattern="dashboard"

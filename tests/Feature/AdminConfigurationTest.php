@@ -73,6 +73,19 @@ class AdminConfigurationTest extends TestCase
             ->assertSee(route('admin.reference-data.study-levels.index'), false);
     }
 
+    public function test_sidebar_declares_the_treeview_widget_so_grouped_links_can_be_opened(): void
+    {
+        $response = $this->actingAs($this->administrator())
+            ->get(route('dashboard'))
+            ->assertOk();
+
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), 'data-widget="treeview"'),
+            'The sidebar navigation must expose the AdminLTE treeview widget exactly once.',
+        );
+    }
+
     public function test_authorized_staff_can_add_and_update_reference_data(): void
     {
         $this->actingAs($this->administrator())

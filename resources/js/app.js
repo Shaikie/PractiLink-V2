@@ -157,10 +157,27 @@ const initializeSubmitStates = () => {
     });
 };
 
+const initializeSidebarActiveLink = () => {
+    const container = document.querySelector('.main-sidebar .sidebar');
+    const activeLink = container?.querySelector('a.nav-link.active');
+
+    if (!container || !activeLink) {
+        return;
+    }
+
+    const containerBox = container.getBoundingClientRect();
+    const linkBox = activeLink.getBoundingClientRect();
+
+    if (linkBox.top < containerBox.top || linkBox.bottom > containerBox.bottom) {
+        container.scrollTop += linkBox.top - containerBox.top - containerBox.height / 2 + linkBox.height / 2;
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initializePasswordToggles();
     initializeConfirmations();
     initializeSubmitStates();
     initializeDateRanges();
     initializeEditors();
+    initializeSidebarActiveLink();
 });
