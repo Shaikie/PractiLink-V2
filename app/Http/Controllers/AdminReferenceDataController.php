@@ -170,6 +170,18 @@ class AdminReferenceDataController extends Controller
         ]);
     }
 
+    public function edit(string $type, string $record): View
+    {
+        $resource = $this->resource($type);
+        $recordModel = $resource['model']::findOrFail($record);
+
+        return view('admin.reference-data.edit', [
+            'resource' => $resource,
+            'resourceType' => $type,
+            'record' => $recordModel,
+        ]);
+    }
+
     public function store(Request $request, string $type): RedirectResponse
     {
         $resource = $this->resource($type);
@@ -227,7 +239,7 @@ class AdminReferenceDataController extends Controller
 
         if ($resource['form'] === 'nationality') {
             $request->validate([
-                'code' => ['nullable', 'string', 'size:3', 'alpha:asc'],
+                'code' => ['nullable', 'string', 'size:3', 'alpha:ascii'],
             ]);
             $data['code'] = $data['code'] ? strtoupper($data['code']) : null;
         }
