@@ -65,6 +65,9 @@ Route::middleware('permission:users.manage')->prefix('reference-data')->name('re
         Route::post('/'.$type, [AdminReferenceDataController::class, 'store'])
             ->defaults('type', $type)
             ->name($type.'.store');
+        Route::get('/'.$type.'/{record}/edit', [AdminReferenceDataController::class, 'edit'])
+            ->defaults('type', $type)
+            ->name($type.'.edit');
         Route::put('/'.$type.'/{record}', [AdminReferenceDataController::class, 'update'])
             ->defaults('type', $type)
             ->name($type.'.update');
